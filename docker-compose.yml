@@ -1,0 +1,14 @@
+services:
+  chordy:
+    image: ghcr.io/meceware/chordy:latest
+    # Swap the image line for this to run your own build:
+    # build: .
+    container_name: chordy
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    env_file: .env
+    volumes:
+      # Must be a real local filesystem. SQLite's WAL uses shared memory and is unsafe on NFS
+      # or SMB, where it will corrupt rather than merely slow down.
+      - ./data:/app/data

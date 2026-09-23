@@ -1,0 +1,11 @@
+.git
+.github
+node_modules
+.next
+data
+.env*
+!.env.example
+.playwright-mcp
+README.md
+Dockerfile
+docker-compose.yml

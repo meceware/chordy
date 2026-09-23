@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --radius: 0.625rem;
+
+  --background: oklch(0.994 0.002 265);
+  --foreground: oklch(0.21 0.02 265);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.02 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.02 265);
+
+  --primary: oklch(0.55 0.21 277);
+  --primary-foreground: oklch(0.985 0.008 277);
+
+  --secondary: oklch(0.965 0.008 265);
+  --secondary-foreground: oklch(0.32 0.03 265);
+
+  --muted: oklch(0.965 0.008 265);
+  --muted-foreground: oklch(0.53 0.022 265);
+
+  --accent: oklch(0.955 0.028 277);
+  --accent-foreground: oklch(0.4 0.15 277);
+
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(0.985 0.008 27);
+
+  --border: oklch(0.915 0.012 265);
+  --input: oklch(0.915 0.012 265);
+  --ring: oklch(0.55 0.21 277);
+
+  /* Sheet rendering. Chords must stay legible at arm's length, so they carry
+     more chroma than ordinary links and are tuned per theme rather than shared. */
+  --chord: oklch(0.49 0.21 277);
+  --chord-hover: oklch(0.42 0.22 277);
+  --sheet-foreground: oklch(0.16 0.02 265);
+}
+
+.dark {
+  --background: oklch(0.175 0.015 265);
+  --foreground: oklch(0.95 0.01 265);
+
+  --card: oklch(0.215 0.018 265);
+  --card-foreground: oklch(0.95 0.01 265);
+  --popover: oklch(0.215 0.018 265);
+  --popover-foreground: oklch(0.95 0.01 265);
+
+  --primary: oklch(0.72 0.16 280);
+  --primary-foreground: oklch(0.19 0.04 280);
+
+  --secondary: oklch(0.265 0.02 265);
+  --secondary-foreground: oklch(0.93 0.012 265);
+
+  --muted: oklch(0.265 0.02 265);
+  --muted-foreground: oklch(0.7 0.02 265);
+
+  --accent: oklch(0.31 0.055 280);
+  --accent-foreground: oklch(0.89 0.06 280);
+
+  --destructive: oklch(0.65 0.2 25);
+  --destructive-foreground: oklch(0.18 0.04 25);
+
+  --border: oklch(0.3 0.02 265);
+  --input: oklch(0.32 0.02 265);
+  --ring: oklch(0.72 0.16 280);
+
+  --chord: oklch(0.79 0.15 280);
+  --chord-hover: oklch(0.87 0.12 280);
+  --sheet-foreground: oklch(0.97 0.008 265);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chord: var(--chord);
+  --color-chord-hover: var(--chord-hover);
+  --color-sheet-foreground: var(--sheet-foreground);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Driven by the font-size control; the sheet scales without touching browser zoom.
+   The narrow default fits a typical 40-character lyric line on a phone without panning. */
+.chord-sheet {
+  font-size: var(--sheet-size, 0.8125rem);
+  line-height: 1.5;
+}
+
+@media (min-width: 640px) {
+  .chord-sheet {
+    font-size: var(--sheet-size, 1rem);
+  }
+}
+
+/* Stage mode strips everything that is not the sheet itself. */
+body[data-stage='true'] .hide-in-stage {
+  display: none !important;
+}
+
+body[data-stage='true'] main {
+  padding-top: 0.5rem;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .chord-sheet {
+    font-size: 10pt;
+    color: #000;
+  }
+
+  /* A chord line and the lyric under it must not be split across pages. */
+  .chord-sheet > div {
+    break-inside: avoid;
+  }
+
+  body {
+    background: #fff;
+  }
+}
