@@ -40,13 +40,14 @@ const html = ({ url, token }) => `
 const text = ({ url, token }) =>
   `Sign in to ${siteConfig.from}\n\nCopy and paste this link into your browser:\n${url}\n\nOr use this code to sign in: ${token}\n\nIf you didn't ask to sign in, you can ignore this email.\n\nThanks,\n${siteConfig.from}`;
 
+export const ipResolution = {
+  ipAddressHeaders: ['x-forwarded-for', 'cf-connecting-ip'],
+  // Loopback and the private ranges: every hop between the tunnel and the container is our own.
+  trustedProxies: ['127.0.0.1/32', '::1/128', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', 'fc00::/7'],
+};
+
 let instance = null;
 
-/**
- * Built on first use rather than at module load. Constructing it opens the database, and
- * every page imports this through the session helpers — eager construction would make
- * `next build` require a live database and have its parallel workers race to create one.
- */
 export function getAuth() {
   instance ??= betterAuth({
     appName: siteConfig.name,
@@ -90,7 +91,8 @@ export function getAuth() {
       nextCookies(),
     ],
     advanced: {
-      cookiePrefix: 'chordy',
+      cookiePrefix: siteConfig.cookiePrefix,
+      ipAddress: ipResolution,
     },
       logger: {
         level: 'warn',
