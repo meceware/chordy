@@ -95,3 +95,36 @@ test('the sheet body survives tokenizing unchanged', () => {
   const lines = tokenizeSheet(SHEET);
   assert.equal(lines.map((l) => l.text).join('\n'), SHEET);
 });
+
+test('tab lines with lowercase or trailing notes are recognised', () => {
+  const tab = [
+    'e|---------------0-----|',
+    'b|-------------0-----0-|',
+    'g|-----------3-----3---|',
+    'd|-----2---------------| Repeat',
+    'a|---------------------|',
+    'e|-0-------------------|',
+  ].join('\n');
+  assert.ok(tokenizeSheet(tab).every((l) => l.type === 'tab'));
+});
+
+test('a chord line can end with a repeat mark and a note', () => {
+  const [line] = tokenizeSheet(' Em x 3 then chords');
+  assert.equal(line.type, 'chords');
+  assert.deepEqual(line.tokens.filter((t) => t.chord).map((t) => t.text), ['Em']);
+  assert.equal(unrecognisedCount([line]), 0);
+});
+
+test('a lyric opening with a single chord name stays a lyric', () => {
+  const lines = tokenizeSheet('A man walked in\nAm I dreaming');
+  assert.deepEqual(lines.map((l) => l.type), ['lyrics', 'lyrics']);
+});
+
+test('arrows between chords are structural marks', () => {
+  for (const text of ['C -> D x3', 'C → D', 'E G A D x 3']) {
+    const [line] = tokenizeSheet(text);
+    assert.equal(line.type, 'chords', text);
+  }
+  const [line] = tokenizeSheet('C -> D x3');
+  assert.deepEqual(line.tokens.filter((t) => t.chord).map((t) => t.text), ['C', 'D']);
+});

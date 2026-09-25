@@ -1,12 +1,13 @@
 import { isChord } from '../chords/parse.js';
 
-const TAB_LINE = /^\s*[eEADGBb]\s*[|:]/;
+const TAB_LINE = /^\s*[A-Ga-g][#b]?\s*[|:]/;
 const DASH_RUN = /-{2,}/g;
 const SECTION_BRACKET = /^\s*\[([^\]]+)\]\s*$/;
 const SECTION_COLON = /^\s*([A-Z][A-Za-z0-9 .'#-]{0,28}):\s*$/;
 
 // Written on a chord line but not themselves chords.
-const STRUCTURAL = /^(\|{1,2}|:\||\|:|%|\/|x\d+|\d+x|N\.?C\.?|\(.*\)|\[.*\]|-+)$/i;
+const STRUCTURAL = /^(\|{1,2}|:\||\|:|%|\/|x\d*|\d+x?|N\.?C\.?|\(.*\)|\[.*\]|-+|-*>|=>|→|⇒)$/i;
+const REPEAT = /^(x\d*|\d+x?)$/i;
 
 // A dash run is required, because a chord line like "D | G | A | D" also opens with a
 // note letter followed by a bar and would otherwise be mistaken for tablature.
@@ -28,15 +29,24 @@ function chordTokens(line) {
   return tokens;
 }
 
-function isChordLine(tokens) {
-  if (tokens.length === 0) return false;
+function chordLineLength(tokens) {
   let chords = 0;
+  let repeat = false;
+  let length = 0;
 
   for (const token of tokens) {
     if (isChord(token.text)) chords += 1;
-    else if (!STRUCTURAL.test(token.text)) return false;
+    else if (STRUCTURAL.test(token.text)) repeat ||= REPEAT.test(token.text);
+    else break;
+    length += 1;
   }
-  return chords > 0;
+
+  if (chords === 0) return 0;
+  if (length === tokens.length) return length;
+
+  // A chord name after the break means a mistyped chord line, not a trailing note.
+  const noted = tokens.slice(length).every((token) => !isChord(token.text));
+  return noted && (chords >= 2 || repeat) ? length : 0;
 }
 
 export function tokenizeSheet(body) {
@@ -48,8 +58,15 @@ export function tokenizeSheet(body) {
     if (bracket) return { type: 'section', text, label: bracket[1] };
 
     const tokens = chordTokens(text);
-    if (isChordLine(tokens)) {
-      return { type: 'chords', text, tokens: tokens.map((t) => ({ ...t, chord: isChord(t.text) })) };
+    const length = chordLineLength(tokens);
+    if (length > 0) {
+      return {
+        type: 'chords',
+        text,
+        tokens: tokens.map((t, index) =>
+          index < length ? { ...t, chord: isChord(t.text) } : { ...t, chord: false, note: true },
+        ),
+      };
     }
 
     const colon = SECTION_COLON.exec(text);
@@ -75,7 +92,7 @@ export function unrecognisedCount(lines) {
   for (const line of lines) {
     if (line.type !== 'chords') continue;
     for (const token of line.tokens) {
-      if (!token.chord && !STRUCTURAL.test(token.text)) count += 1;
+      if (!token.chord && !token.note && !STRUCTURAL.test(token.text)) count += 1;
     }
   }
   return count;

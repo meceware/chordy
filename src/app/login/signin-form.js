@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, MoveLeft } from 'lucide-react';
 import { Pick } from '@/components/pick';
@@ -55,6 +55,13 @@ export function SignInForm() {
   const [code, setCode] = useState('');
   const [problem, setProblem] = useState(null);
   const [pending, startTransition] = useTransition();
+  const codeInput = useRef(null);
+
+  // autoFocus alone misses: the code field mounts while the send is still pending, so it
+  // is disabled at that moment. Focus once it's enabled — also after a rejected code.
+  useEffect(() => {
+    if (sentTo && !pending) codeInput.current?.focus();
+  }, [sentTo, pending]);
 
   const submitEmail = (event) => {
     event.preventDefault();
@@ -102,12 +109,12 @@ export function SignInForm() {
         <div className="space-y-4">
           <div className="flex justify-center">
             <InputOTP
+              ref={codeInput}
               maxLength={6}
               value={code}
               onChange={setCode}
               onComplete={submitCode}
               disabled={pending}
-              autoFocus
             >
               <InputOTPGroup>
                 {[0, 1, 2, 3, 4, 5].map((index) => (
