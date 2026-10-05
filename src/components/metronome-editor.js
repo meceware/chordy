@@ -6,6 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   PRESETS,
   VOICES,
@@ -22,7 +23,28 @@ import {
 } from '@/lib/metronome';
 import { cn } from '@/lib/utils';
 
-const VOICE_LABELS = { kick: 'Kick', snare: 'Snare', hat: 'Hat' };
+const VOICE_LABELS = {
+  kick: 'Kick',
+  snare: 'Snare',
+  rim: 'Rim',
+  clap: 'Clap',
+  hightom: 'High tom',
+  lowtom: 'Low tom',
+  hat: 'Hat',
+  openhat: 'Open hat',
+  ride: 'Ride',
+  cowbell: 'Cowbell',
+  shaker: 'Shaker',
+};
+
+// Always on screen, being what most beats are built from. Eleven rows would bury the grid on a
+// phone, so the rest appear only once the pattern plays them or you add one.
+const CORE_VOICES = ['kick', 'snare', 'hat'];
+
+const PRESET_ROWS = [
+  { label: 'Meter', groove: false },
+  { label: 'Groove', groove: true },
+];
 
 function Count({ label, value, max, onChange }) {
   return (
@@ -53,6 +75,10 @@ export function MetronomeEditor({ bpm, onBpm, pattern, onPattern, running, playh
   const [sounding, setSounding] = useState(-1);
   // Held as text while being typed, so clearing the box to retype does not snap to the minimum.
   const [typed, setTyped] = useState(null);
+  // Voices added from the menu or edited by hand stay on screen even with every cell cleared, so
+  // a row does not vanish from under the finger that just emptied it.
+  const [kept, setKept] = useState([]);
+  const keep = (voice) => setKept((current) => (current.includes(voice) ? current : [...current, voice]));
 
   // Only while the grid is on screen: there is nothing to animate behind a closed panel, and the
   // poll has to run off the audio clock rather than the scheduler, which works a beat ahead.
@@ -110,6 +136,7 @@ export function MetronomeEditor({ bpm, onBpm, pattern, onPattern, running, playh
     const on = !pattern[from.voice].includes(from.step);
     painting.current = { on, last: from.key };
     handledOnPress.current = true;
+    keep(from.voice);
     onPattern((current) => setStep(current, from.voice, from.step, on));
   };
 
@@ -129,9 +156,15 @@ export function MetronomeEditor({ bpm, onBpm, pattern, onPattern, running, playh
       return;
     }
 
+    keep(voice);
     onPattern((current) => toggleStep(current, voice, column));
   };
   const silent = isSilent(pattern);
+
+  const shown = VOICES.filter(
+    (voice) => CORE_VOICES.includes(voice) || pattern[voice].length > 0 || kept.includes(voice),
+  );
+  const hidden = VOICES.filter((voice) => !shown.includes(voice));
 
   const commit = () => {
     if (typed !== null) onBpm(clampBpm(Number(typed)));
@@ -230,7 +263,7 @@ export function MetronomeEditor({ bpm, onBpm, pattern, onPattern, running, playh
         >
           <div className="w-max space-y-1">
             <div className="flex items-center gap-1">
-              <span className="w-12 shrink-0" />
+              <span className="w-14 shrink-0" />
               {Array.from({ length: steps }, (unused, column) => (
                 <span
                   key={column}
@@ -245,9 +278,9 @@ export function MetronomeEditor({ bpm, onBpm, pattern, onPattern, running, playh
               ))}
             </div>
 
-            {VOICES.map((voice) => (
+            {shown.map((voice) => (
               <div key={voice} className="flex items-center gap-1">
-                <span className="w-12 shrink-0 text-xs text-muted-foreground">{VOICE_LABELS[voice]}</span>
+                <span className="w-14 shrink-0 text-xs text-muted-foreground">{VOICE_LABELS[voice]}</span>
 
                 {Array.from({ length: steps }, (unused, column) => {
                   const on = pattern[voice].includes(column);
@@ -278,21 +311,43 @@ export function MetronomeEditor({ bpm, onBpm, pattern, onPattern, running, playh
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1">
-          <span className="w-16 text-xs tracking-wide text-muted-foreground uppercase">Presets</span>
-          {Object.entries(PRESETS).map(([id, { label }]) => (
-            <Button
-              key={id}
-              type="button"
-              size="sm"
-              variant={preset?.[0] === id ? 'default' : 'outline'}
-              className="h-7 px-2 text-xs"
-              onClick={() => onPattern({ ...PRESETS[id] })}
-            >
-              {label}
-            </Button>
-          ))}
-        </div>
+        {hidden.length > 0 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs">
+                <Plus className="size-3.5" />
+                Add sound
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {hidden.map((voice) => (
+                <DropdownMenuItem key={voice} onSelect={() => keep(voice)}>
+                  {VOICE_LABELS[voice]}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+
+        {PRESET_ROWS.map((row) => (
+          <div key={row.label} className="flex flex-wrap items-center gap-1">
+            <span className="w-16 text-xs tracking-wide text-muted-foreground uppercase">{row.label}</span>
+            {Object.entries(PRESETS)
+              .filter(([, candidate]) => candidate.groove === row.groove)
+              .map(([id, { label }]) => (
+                <Button
+                  key={id}
+                  type="button"
+                  size="sm"
+                  variant={preset?.[0] === id ? 'default' : 'outline'}
+                  className="h-7 px-2 text-xs"
+                  onClick={() => onPattern({ ...PRESETS[id] })}
+                >
+                  {label}
+                </Button>
+              ))}
+          </div>
+        ))}
 
         <Button
           type="button"

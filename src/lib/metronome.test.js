@@ -14,6 +14,7 @@ import {
   setStep,
   parsePattern,
   serialisePattern,
+  withVoices,
 } from './metronome.js';
 
 /**
@@ -75,7 +76,7 @@ test('no preset leaves a beat you would count out loud silent', () => {
   }
 });
 
-test('resizing keeps the kick and snare that fit and re-lays the hat', () => {
+test('resizing keeps every hit that fits and re-lays the hat', () => {
   const half = resizePattern(PRESETS['4/4'], 2, 2);
 
   assert.equal(stepCount(half), 4);
@@ -84,6 +85,7 @@ test('resizing keeps the kick and snare that fit and re-lays the hat', () => {
   // Choosing a division is a request to hear it, so every subdivision gets a hat.
   assert.deepEqual(half.hat, [0, 1, 2, 3]);
   assert.deepEqual(resizePattern(PRESETS['4/4'], 4, 4).hat, Array.from({ length: 16 }, (u, i) => i));
+  assert.deepEqual(resizePattern(PRESETS.swing, 2, 3).ride, [0, 3, 5]);
 });
 
 test('3/4 and 6/8 hold the same subdivisions but group them differently', () => {
@@ -99,7 +101,7 @@ test('3/4 and 6/8 hold the same subdivisions but group them differently', () => 
 });
 
 test('toggling a step adds it, then takes it away', () => {
-  const empty = { beats: 1, subbeats: 2, kick: [], snare: [], hat: [] };
+  const empty = withVoices({ beats: 1, subbeats: 2 });
 
   assert.ok(isSilent(empty));
 
@@ -110,7 +112,7 @@ test('toggling a step adds it, then takes it away', () => {
 });
 
 test('setting a step is idempotent, which is what dragging across cells relies on', () => {
-  const pattern = { beats: 2, subbeats: 2, kick: [], snare: [], hat: [] };
+  const pattern = withVoices({ beats: 2, subbeats: 2 });
 
   const on = setStep(pattern, 'kick', 2, true);
   assert.deepEqual(on.kick, [2]);
@@ -120,8 +122,19 @@ test('setting a step is idempotent, which is what dragging across cells relies o
 });
 
 test('a pattern survives a round trip through the database column', () => {
-  const pattern = { beats: 3, subbeats: 4, kick: [0, 5], snare: [4], hat: [1, 2, 11] };
+  const pattern = withVoices({ beats: 3, subbeats: 4, kick: [0, 5], rim: [4], openhat: [1, 2, 11] });
   assert.deepEqual(parsePattern(serialisePattern(pattern)), pattern);
+  // Silent voices are left out of the stored value rather than written as empty rows.
+  assert.deepEqual(Object.keys(JSON.parse(serialisePattern(pattern))), ['beats', 'subbeats', 'kick', 'rim', 'openhat']);
+});
+
+test('a pattern saved before the newer voices existed loads with them empty', () => {
+  const stored = '{"beats":4,"subbeats":2,"kick":[0],"snare":[2,6],"hat":[0,1,2,3,4,5,6,7]}';
+  const pattern = parsePattern(stored);
+
+  assert.deepEqual(pattern.snare, [2, 6]);
+  for (const voice of VOICES) assert.ok(Array.isArray(pattern[voice]), `${voice} is missing`);
+  assert.equal(serialisePattern(pattern), stored);
 });
 
 test('a preset id stored before the grid existed still loads', () => {

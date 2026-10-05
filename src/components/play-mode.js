@@ -9,7 +9,10 @@ import { saveScrollSpeed } from '@/app/songs/[id]/actions';
 import { isTyping } from '@/lib/keys';
 import { cn } from '@/lib/utils';
 
-function useAutoScroll(playing, speed, onReachEnd) {
+// Reaching the bottom does not end play mode: the song is still being played from the last
+// screen, so the screen has to stay awake. The loop idles there instead, and picks up again if
+// you drag back up to repeat a section.
+function useAutoScroll(playing, speed) {
   useEffect(() => {
     if (!playing) return undefined;
 
@@ -26,12 +29,6 @@ function useAutoScroll(playing, speed, onReachEnd) {
         carried = travel - whole;
 
         if (whole !== 0) window.scrollBy(0, whole);
-
-        const bottom = document.documentElement.scrollHeight - window.innerHeight;
-        if (window.scrollY >= bottom - 1) {
-          onReachEnd();
-          return;
-        }
       }
 
       previous = now;
@@ -40,7 +37,7 @@ function useAutoScroll(playing, speed, onReachEnd) {
 
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
-  }, [playing, speed, onReachEnd]);
+  }, [playing, speed]);
 }
 
 function useWakeLock(active) {
@@ -52,7 +49,10 @@ function useWakeLock(active) {
 
     const acquire = async () => {
       try {
-        sentinel = await navigator.wakeLock.request('screen');
+        const lock = await navigator.wakeLock.request('screen');
+        // Pausing while the request was in flight would otherwise leave this lock held for good.
+        if (released) lock.release().catch(() => {});
+        else sentinel = lock;
       } catch {
         // Denied, or the tab is not visible; the visibility listener retries.
       }
@@ -91,10 +91,9 @@ export function PlayMode({
   const [stage, setStage] = useState(false);
   const barRef = useRef(null);
 
-  const stop = useCallback(() => setPlaying(false), []);
-
-  useAutoScroll(playing, speed, stop);
-  useWakeLock(playing);
+  useAutoScroll(playing, speed);
+  // A running metronome means you are playing too, scrolling or not.
+  useWakeLock(playing || metronomeRunning);
 
   useEffect(() => {
     document.body.dataset.stage = String(stage);

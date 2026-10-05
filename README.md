@@ -7,8 +7,9 @@ A private, self-hosted web app for your guitar chord sheets.
 - **Transpose** to any key, saved per song, with every chord diagram following
 - **Chord diagrams for every chord in the sheet** — tap one for its fingerings from a database of
   2,000+ guitar voicings, draw your own when none fits, and pin the shape this song actually uses
-- **Metronome** with a kick/snare/hat grid you can edit step by step, time-signature presets from
-  2/4 to 12/8 shuffle, tempo saved per song, and a playhead showing where you are in the bar
+- **Metronome** with a step grid you can edit by hand — kick, snare, hats, toms, rim, clap, ride,
+  cowbell and shaker — time-signature presets from 2/4 to 12/8 shuffle, grooves from half-time to
+  bossa nova and swing, tempo saved per song, and a playhead showing where you are in the bar
 - **Play mode** — hands-free auto-scroll at a speed you set per song, the screen kept awake, and a
   fullscreen stage mode with keyboard shortcuts
 - **Installable** on a phone or desktop as a PWA, with a dark mode that suits a dim stage

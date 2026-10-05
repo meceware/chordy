@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { tokenizeSheet } from '@/lib/sheet/tokenize';
 import { transposeSheet } from '@/lib/sheet/transpose';
-import { pairLine, groupCells } from '@/lib/sheet/pair';
+import { pairLine, wordsOf } from '@/lib/sheet/pair';
 import { ChordPanel } from '@/components/chord-panel';
 import { cn } from '@/lib/utils';
 
@@ -43,36 +43,31 @@ function ExactLine({ line, onSelect }) {
   return <div className="font-semibold whitespace-pre">{parts}</div>;
 }
 
-// Beyond this many characters a glued run is allowed to break, because refusing to
-// wrap a long run would push the sheet wider than the screen — the thing wrapping is
-// meant to prevent. Short runs, which is what a split word actually produces, stay whole.
-const GLUE_LIMIT = 16;
-
 function WrappedPair({ chordLine, lyricLine, onSelect }) {
-  const groups = groupCells(pairLine(chordLine, lyricLine));
+  const words = wordsOf(pairLine(chordLine, lyricLine));
 
   return (
     <div className="flex flex-wrap items-start">
-      {groups.map((group, index) => {
-        const length = group.reduce((total, cell) => total + cell.text.length, 0);
-
-        return (
-          <span key={index} className={cn('flex items-start', length <= GLUE_LIMIT && 'whitespace-nowrap')}>
-            {group.map((cell, cellIndex) => (
-              // A fixed first row keeps the chord and lyric rows aligned across cells
-              // even where a cell has a chord but no lyric beneath it.
-              <span key={cellIndex} className="grid grid-rows-[1.5em_auto] items-start">
-                {cell.chord?.chord ? (
-                  <ChordButton text={cell.chord.text} onSelect={onSelect} className="justify-self-start pr-3" />
-                ) : (
-                  <span className="pr-3 font-semibold">{cell.chord?.text ?? ''}</span>
-                )}
-                <span className="whitespace-pre-wrap">{cell.text}</span>
-              </span>
-            ))}
-          </span>
-        );
-      })}
+      {words.map((word, index) => (
+        // Fragments are `pre` so that nothing can shrink a word and wrap it inside itself; a
+        // word wider than the screen pans with the sheet instead.
+        <span key={index} className="flex items-start">
+          {word.map((segment, segmentIndex) => (
+            // A fixed first row keeps the chord and lyric rows aligned across words even
+            // where a word has no chord above it.
+            <span key={segmentIndex} className="grid grid-rows-[1.5em_auto] items-start">
+              {segment.chord?.chord ? (
+                <ChordButton text={segment.chord.text} onSelect={onSelect} className="justify-self-start pr-3" />
+              ) : segment.chord ? (
+                <span className="pr-3 font-semibold">{segment.chord.text}</span>
+              ) : (
+                <span />
+              )}
+              <span className="whitespace-pre">{segment.text}</span>
+            </span>
+          ))}
+        </span>
+      ))}
     </div>
   );
 }
