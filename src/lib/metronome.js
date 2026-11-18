@@ -159,6 +159,16 @@ export function serialisePattern(pattern) {
   return JSON.stringify({ beats: pattern.beats, subbeats: pattern.subbeats, ...Object.fromEntries(rows) });
 }
 
+/**
+ * What to call a pattern: the preset it matches beat for beat, or "Custom" once the grid has been
+ * painted by hand. Compared as stored, so labels and flags on the presets play no part.
+ */
+export function patternLabel(pattern) {
+  const written = serialisePattern(pattern);
+  const match = Object.values(PRESETS).find((preset) => serialisePattern(preset) === written);
+  return match ? match.label : 'Custom';
+}
+
 // Scheduling ahead in time is the whole trick. A timer that fires one sound per beat drifts
 // audibly within a minute, because timer callbacks are only approximately on time; instead a
 // coarse timer queues notes at exact AudioContext timestamps a little way into the future.

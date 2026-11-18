@@ -49,7 +49,7 @@ export async function saveSong(input) {
     updateSong(userId, input.id, fields, tags);
     revalidatePath(`/songs/${input.id}`, 'max');
     revalidatePath('/', 'max');
-    return { id: Number(input.id) };
+    return { id: Number(input.id), duplicate };
   }
 
   const id = createSong(

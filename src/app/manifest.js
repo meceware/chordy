@@ -9,8 +9,8 @@ export default function manifest() {
     start_url: '/',
     scope: '/',
     display: 'standalone',
-    background_color: siteConfig.colors.light,
-    theme_color: siteConfig.colors.brand,
+    background_color: siteConfig.colors.dark,
+    theme_color: siteConfig.colors.dark,
     categories: ['music', 'productivity'],
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

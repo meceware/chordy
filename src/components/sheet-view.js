@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { tokenizeSheet } from '@/lib/sheet/tokenize';
 import { transposeSheet } from '@/lib/sheet/transpose';
 import { pairLine, wordsOf } from '@/lib/sheet/pair';
-import { ChordPanel } from '@/components/chord-panel';
+import { ChordDialog } from '@/components/chord-dialog';
 import { cn } from '@/lib/utils';
 
 function ChordButton({ text, onSelect, className }) {
@@ -13,8 +13,11 @@ function ChordButton({ text, onSelect, className }) {
       type="button"
       onClick={() => onSelect(text)}
       className={cn(
-        'rounded font-semibold text-chord hover:text-chord-hover hover:underline',
-        'focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+        // The pseudo-element widens the tap target past the glyphs without moving a column:
+        // a one-letter chord is otherwise a 9px-wide button.
+        'relative rounded-sm font-semibold text-chord',
+        'after:absolute after:-inset-x-1.5 after:-inset-y-1 hover:text-chord-hover',
+        'active:text-chord-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
         className,
       )}
     >
@@ -77,13 +80,19 @@ export function SheetView({
   transpose = 0,
   showChords = true,
   showLyrics = true,
+  // Chords stay over their syllables while long lines wrap; turning it off is only for tools that
+  // must show the raw columns.
   wrap = true,
   fontSize = null,
   shapes,
   songId = null,
   prefs,
+  // A page that keeps its own chord dialog (the song page, shared with its chord card) takes the
+  // tap; anywhere else the sheet opens a dialog of its own.
+  onChord = null,
 }) {
   const [chord, setChord] = useState(null);
+  const select = onChord ?? setChord;
 
   const lines = useMemo(
     () => transposeSheet(tokenizeSheet(body), transpose),
@@ -102,7 +111,7 @@ export function SheetView({
       rendered.push(
         <div
           key={index}
-          className="mt-4 mb-1 border-l-2 border-primary pl-2 font-sans text-sm font-semibold tracking-wide text-primary uppercase first:mt-0"
+          className="mt-6 mb-1.5 font-sans text-xs font-semibold tracking-widest text-muted-foreground uppercase first:mt-0"
         >
           {line.label}
         </div>,
@@ -125,10 +134,10 @@ export function SheetView({
       const lyricLine = paired && lines[index + 1]?.type === 'lyrics' ? lines[index + 1] : null;
 
       if (lyricLine) {
-        rendered.push(<WrappedPair key={index} chordLine={line} lyricLine={lyricLine} onSelect={setChord} />);
+        rendered.push(<WrappedPair key={index} chordLine={line} lyricLine={lyricLine} onSelect={select} />);
         index += 1;
       } else {
-        rendered.push(<ExactLine key={index} line={line} onSelect={setChord} />);
+        rendered.push(<ExactLine key={index} line={line} onSelect={select} />);
       }
       continue;
     }
@@ -155,13 +164,9 @@ export function SheetView({
         {rendered}
       </div>
 
-      <ChordPanel
-        chord={chord}
-        shapes={shapes}
-        songId={songId}
-        prefs={prefs}
-        onOpenChange={(open) => !open && setChord(null)}
-      />
+      {onChord ? null : (
+        <ChordDialog chord={chord} shapes={shapes} songId={songId} prefs={prefs} onClose={() => setChord(null)} />
+      )}
     </>
   );
 }

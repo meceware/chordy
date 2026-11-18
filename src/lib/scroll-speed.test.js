@@ -1,30 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { speedForBpm, SPEED_MIN, SPEED_MAX, SPEED_STEP, SPEED_DEFAULT } from './scroll-speed.js';
+import { clampSpeed, initialSpeed, SPEED_DEFAULT, SPEED_MAX, SPEED_MIN, SPEED_STEP } from './scroll-speed.js';
 
-test('a missing tempo falls back to the default', () => {
-  assert.equal(speedForBpm(null), SPEED_DEFAULT);
-  assert.equal(speedForBpm(undefined), SPEED_DEFAULT);
-  assert.equal(speedForBpm(0), SPEED_DEFAULT);
+test('a song with no saved speed starts at 10, stepping one at a time', () => {
+  assert.equal(SPEED_DEFAULT, 10);
+  assert.equal(SPEED_STEP, 1);
+  assert.equal(initialSpeed(null), 10);
+  assert.equal(initialSpeed(undefined), 10);
+  assert.equal(initialSpeed(0), 10);
 });
 
-test('a tempo scales the starting speed to about a quarter of it', () => {
-  assert.equal(speedForBpm(56), 14);
-  assert.equal(speedForBpm(58), 14);
-  assert.equal(speedForBpm(60), 16);
-  assert.equal(speedForBpm(84), 22);
-  assert.equal(speedForBpm(120), 30);
+test('a saved speed is kept as it is, so songs set up before keep their pace', () => {
+  assert.equal(initialSpeed(22), 22);
+  assert.equal(initialSpeed(7), 7);
 });
 
-test('the result always lands on the stepper grid and within range', () => {
-  for (let bpm = 1; bpm <= 400; bpm += 1) {
-    const speed = speedForBpm(bpm);
-    assert.equal(speed % SPEED_STEP, 0, `bpm ${bpm} gave ${speed}`);
-    assert.ok(speed >= SPEED_MIN && speed <= SPEED_MAX, `bpm ${bpm} gave ${speed}`);
-  }
-});
-
-test('extreme tempos clamp rather than running away', () => {
-  assert.equal(speedForBpm(1), SPEED_MIN);
-  assert.equal(speedForBpm(400), SPEED_MAX);
+test('speeds stay within range', () => {
+  assert.equal(clampSpeed(-5), SPEED_MIN);
+  assert.equal(clampSpeed(400), SPEED_MAX);
+  assert.equal(initialSpeed(400), SPEED_MAX);
 });

@@ -42,7 +42,7 @@ export function InstallHint() {
   if (!show) return null;
 
   return (
-    <aside className="no-print flex items-start gap-3 rounded-lg border border-border bg-accent/40 px-4 py-3 text-sm">
+    <aside className="no-print flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm">
       <p className="flex-1 text-muted-foreground">
         Keep {siteConfig.name} on your home screen — tap <Share className="inline size-4 align-text-bottom" /> then{' '}
         <SquarePlus className="inline size-4 align-text-bottom" /> Add to Home Screen.
@@ -50,7 +50,7 @@ export function InstallHint() {
       <Button
         variant="ghost"
         size="icon"
-        className="-mt-1 -mr-2 size-7 shrink-0"
+        className="-my-1 -mr-2 size-9 shrink-0 rounded-lg"
         aria-label="Dismiss"
         onClick={() => setDismissed(true)}
       >

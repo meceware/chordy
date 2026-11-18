@@ -1,40 +1,42 @@
-import { ExternalLink, CirclePlay } from 'lucide-react';
+'use client';
+
+import { CirclePlay, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { CollapsibleCard } from '@/components/collapsible-card';
 import { youtubeId } from '@/lib/youtube';
 
+/**
+ * The song's tutorial, folded until asked for: nothing is fetched from YouTube until it is opened.
+ * Open, the video runs edge to edge under the title. A link that is not a YouTube video cannot be
+ * embedded, so the card holds a button to open it instead.
+ */
 export function VideoTutorial({ url }) {
   if (!url) return null;
 
   const id = youtubeId(url);
 
   return (
-    <section className="no-print hide-in-stage space-y-2 border-t border-border pt-5">
-      <h2 className="flex items-center gap-2 text-sm font-semibold tracking-wide uppercase">
-        <CirclePlay className="size-4 text-red-500" />
-        Tutorial
-      </h2>
-
+    <CollapsibleCard icon={CirclePlay} title="Tutorial">
       {id ? (
-        <div className="aspect-video w-full overflow-hidden rounded-lg border border-border bg-muted">
+        <div className="aspect-video w-full bg-muted">
           <iframe
             src={`https://www.youtube-nocookie.com/embed/${id}`}
             title="Video tutorial"
-            loading="lazy"
             allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
             className="size-full"
           />
         </div>
       ) : (
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-        >
-          Watch the tutorial
-          <ExternalLink className="size-3.5" />
-        </a>
+        <div className="px-4 py-4">
+          <Button asChild variant="outline" className="h-11 rounded-xl">
+            <a href={url} target="_blank" rel="noopener noreferrer">
+              Watch the tutorial
+              <ExternalLink className="size-4" aria-hidden />
+            </a>
+          </Button>
+        </div>
       )}
-    </section>
+    </CollapsibleCard>
   );
 }

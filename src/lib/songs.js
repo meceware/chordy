@@ -7,9 +7,15 @@ const SONG_COLUMNS = `
   created_at AS createdAt, updated_at AS updatedAt
 `;
 
+// What a list of songs shows — the library and the songs dialog — and nothing more: never the
+// sheets themselves, which would otherwise ship to the browser for every song on every visit.
+const LIST_COLUMNS = `
+  songs.id, title, artist, song_key AS songKey, favourite, songs.created_at AS createdAt
+`;
+
 const SQL = {
   list: `
-    SELECT ${SONG_COLUMNS}, v.viewed_at AS viewedAt
+    SELECT ${LIST_COLUMNS}, v.viewed_at AS viewedAt
     FROM songs
     LEFT JOIN song_views v ON v.song_id = songs.id AND v.user_id = songs.user_id
     WHERE songs.user_id = ?
@@ -167,26 +173,4 @@ export function deleteSong(userId, id) {
     prepared(WRITE.remove).run(Number(id), userId);
     pruneTags(userId);
   })();
-}
-
-/**
- * The songs either side of this one for the play bar, in title order.
- *
- * It used to walk recently-viewed order, to match the home page's default sort. That could not
- * work: opening a song records a view, which moves it to the front of the very sequence being
- * walked, so with two songs you end up pinned at one end and next/previous swap on every step.
- * A sequence you navigate cannot be ordered by the act of navigating it. Title order is stable,
- * reaches every song, and reads the same on every visit.
- */
-export function songNeighbours(userId, songId) {
-  const ordered = prepared(SQL.list).all(userId);
-  const index = ordered.findIndex((song) => song.id === Number(songId));
-  if (index === -1) return { previous: null, next: null };
-
-  const at = (position) => {
-    const song = ordered[position];
-    return song ? { id: song.id, title: song.title } : null;
-  };
-
-  return { previous: index > 0 ? at(index - 1) : null, next: at(index + 1) };
 }

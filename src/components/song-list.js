@@ -3,9 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import Fuse from 'fuse.js';
-import { Search, Star, Music2, ArrowDownUp, Check } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { ArrowDownUp, Check, Music2, Play, Search, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,9 +12,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { TagBadges } from '@/components/tag-badges';
+import { SongRow, SongRows, songMeta } from '@/components/song-row';
 import { artistOf } from '@/lib/display';
-import { tagColor } from '@/lib/tag-color';
+import { useHydrated, useStoredChoice } from '@/lib/hooks';
+import { tagColor, tagColorSelected } from '@/lib/tag-color';
 import { cn } from '@/lib/utils';
 
 const FUSE_OPTIONS = {
@@ -38,124 +37,192 @@ const SORTS = {
   title: { label: 'Title', compare: byTitle },
   artist: { label: 'Artist', compare: (a, b) => artistOf(a).localeCompare(artistOf(b), undefined, { sensitivity: 'base' }) || byTitle(a, b) },
   added: { label: 'Recently added', compare: (a, b) => b.createdAt - a.createdAt || byTitle(a, b) },
-  favourite: { label: 'Favourites first', compare: (a, b) => b.favourite - a.favourite || byTitle(a, b) },
 };
+const SORT_KEYS = Object.keys(SORTS);
+
+const FAVOURITES = Symbol('favourites');
+
+const NEUTRAL = {
+  tint: 'bg-secondary text-secondary-foreground ring-border hover:bg-accent',
+  solid: 'bg-foreground text-background ring-foreground',
+};
+
+/**
+ * A filter chip. Tags wear the same colour here as on every song row, faint until chosen and
+ * filled in once chosen, so the filter and the songs it keeps read as the same thing.
+ */
+function Chip({ active, onClick, colors, count, children }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        // The pseudo-element lifts the tap target to 44px without making the chip itself taller.
+        'relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium ring-1 transition-colors ring-inset',
+        'after:absolute after:inset-x-0 after:-inset-y-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+        active ? colors.solid : colors.tint,
+      )}
+    >
+      {children}
+      <span className="tabular-nums opacity-60">{count}</span>
+    </button>
+  );
+}
+
+function Continue({ song }) {
+  return (
+    <Link
+      href={`/songs/${song.id}`}
+      className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:bg-accent"
+    >
+      <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+        <Play className="size-5 fill-current" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-xs text-muted-foreground">Continue playing</span>
+        <span className="block truncate text-[17px] font-semibold">{song.title}</span>
+        <span className="block truncate text-sm text-muted-foreground">
+          {artistOf(song)}
+          {song.songKey ? ` · key ${song.songKey}` : ''}
+        </span>
+      </span>
+    </Link>
+  );
+}
 
 export function SongList({ songs }) {
   const [query, setQuery] = useState('');
-  const [tag, setTag] = useState(null);
-  const [sort, setSort] = useState('recent');
+  const [shelf, setShelf] = useState(null);
+  const [sort, setSort] = useStoredChoice('chordy.sort', 'recent', SORT_KEYS);
+  // Relative dates depend on the viewer's clock and timezone, which the server render cannot know.
+  const hydrated = useHydrated();
 
   const fuse = useMemo(() => new Fuse(songs, FUSE_OPTIONS), [songs]);
-  const tags = useMemo(() => [...new Set(songs.flatMap((song) => song.tags))].sort(), [songs]);
+  const tagCounts = useMemo(() => {
+    const counts = new Map();
+    for (const song of songs) for (const name of song.tags) counts.set(name, (counts.get(name) ?? 0) + 1);
+    return [...counts].sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  }, [songs]);
+  const favourites = songs.filter((song) => song.favourite).length;
+  const recent = useMemo(
+    () => songs.filter((song) => song.viewedAt).sort((a, b) => b.viewedAt - a.viewedAt)[0] ?? null,
+    [songs],
+  );
+
+  const searching = query.trim() !== '';
 
   const results = useMemo(() => {
     // A fuzzy search is already ranked by relevance, so sorting it again would throw the
     // ranking away; the chosen order applies to the unfiltered list.
-    const searching = query.trim() !== '';
     const base = searching ? fuse.search(query).map((hit) => hit.item) : [...songs].sort(SORTS[sort].compare);
+    if (shelf === FAVOURITES) return base.filter((song) => song.favourite);
+    return shelf ? base.filter((song) => song.tags.includes(shelf)) : base;
+  }, [fuse, query, searching, songs, sort, shelf]);
 
-    return tag ? base.filter((song) => song.tags.includes(tag)) : base;
-  }, [fuse, query, songs, sort, tag]);
+  const toggle = (next) => setShelf((current) => (current === next ? null : next));
+
+  if (songs.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-6 py-12 text-center">
+        <span className="grid size-12 place-items-center rounded-xl bg-secondary text-brand">
+          <Music2 className="size-6" />
+        </span>
+        <div className="space-y-1">
+          <p className="font-medium">No songs yet</p>
+          <p className="text-sm text-muted-foreground">Paste a chord sheet from anywhere — plain text or ChordPro.</p>
+        </div>
+        <Button asChild className="h-11 rounded-xl px-5">
+          <Link href="/songs/new">Add your first song</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+    <section aria-label="Library" className="space-y-4">
+      {recent ? <Continue song={recent} /> : null}
+
+      <div className="flex items-center gap-2">
+        <label className="flex h-11 flex-1 items-center gap-2 rounded-xl border border-input bg-card px-3 focus-within:ring-2 focus-within:ring-ring">
+          <Search className="size-4 shrink-0 text-muted-foreground" />
+          <input
+            type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search songs, artists, tags"
             aria-label="Search songs"
-            className="pl-9"
+            className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
           />
-        </div>
+        </label>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button type="button" variant="outline" className="h-9 w-full sm:w-auto" aria-label="Sort songs">
-              <ArrowDownUp className="size-4 text-muted-foreground" />
-              {SORTS[sort].label}
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-11 rounded-xl"
+              aria-label={`Sort: ${SORTS[sort].label}`}
+              title={`Sort: ${SORTS[sort].label}`}
+            >
+              <ArrowDownUp className="size-4" />
             </Button>
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuContent align="end" className="w-56 rounded-xl">
             <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-            {Object.entries(SORTS).map(([value, { label }]) => (
-              <DropdownMenuItem key={value} onSelect={() => setSort(value)} className="gap-2">
+            {SORT_KEYS.map((value) => (
+              <DropdownMenuItem key={value} onSelect={() => setSort(value)} className="min-h-11 gap-2">
                 <Check className={cn('size-4', sort === value ? 'opacity-100' : 'opacity-0')} />
-                {label}
+                {SORTS[value].label}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {tags.map((name) => (
-          <button key={name} type="button" onClick={() => setTag(tag === name ? null : name)}>
-            <Badge
-              className={cn(
-                'cursor-pointer border-transparent font-medium',
-                tagColor(name),
-                tag === name && 'ring-2 ring-primary ring-offset-1 ring-offset-background',
-              )}
+      {tagCounts.length > 0 || favourites > 0 ? (
+        // One row that scrolls sideways on a phone, wrapping onto more rows where there is room.
+        <div
+          role="group"
+          aria-label="Show"
+          className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+        >
+          <Chip active={shelf === null} onClick={() => setShelf(null)} colors={NEUTRAL} count={songs.length}>
+            All
+          </Chip>
+          {favourites > 0 ? (
+            <Chip active={shelf === FAVOURITES} onClick={() => toggle(FAVOURITES)} colors={NEUTRAL} count={favourites}>
+              <Star className={cn('size-3.5', shelf === FAVOURITES ? 'fill-current' : 'fill-brand text-brand')} aria-hidden />
+              Favourites
+            </Chip>
+          ) : null}
+          {tagCounts.map(([name, count]) => (
+            <Chip
+              key={name}
+              active={shelf === name}
+              onClick={() => toggle(name)}
+              colors={{ tint: tagColor(name), solid: tagColorSelected(name) }}
+              count={count}
             >
               {name}
-            </Badge>
-          </button>
-        ))}
-      </div>
+            </Chip>
+          ))}
+        </div>
+      ) : null}
 
       {results.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">
-          {songs.length === 0 ? (
-            <>
-              Nothing here yet.{' '}
-              <Link href="/songs/new" className="text-primary underline underline-offset-4 hover:no-underline">
-                Add your first chord sheet
-              </Link>
-              .
-            </>
-          ) : (
-            `Nothing matches “${query}”.`
-          )}
+        <p className="rounded-xl border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+          {searching ? `Nothing matches “${query}”.` : 'Nothing here yet.'}
         </p>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+        <SongRows>
           {results.map((song) => (
-            <li key={song.id}>
-              <Link
-                href={`/songs/${song.id}`}
-                className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-accent/60"
-              >
-                <Music2 className="size-4 shrink-0 text-muted-foreground" />
-
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1.5">
-                    <span className="truncate font-medium">{song.title}</span>
-                    {song.favourite ? (
-                      <Star className="size-3.5 shrink-0 fill-amber-400 text-amber-400" />
-                    ) : null}
-                  </span>
-                  <span className="block truncate text-sm text-muted-foreground">
-                    {artistOf(song)}
-                  </span>
-
-                  <TagBadges tags={song.tags} className="mt-1 sm:hidden" />
-                </span>
-
-                <TagBadges tags={song.tags} className="hidden sm:flex" />
-
-                <span className="w-10 shrink-0 self-start text-right font-mono text-sm text-primary sm:self-center">
-                  {song.songKey}
-                </span>
-              </Link>
-            </li>
+            <SongRow key={song.id} song={song} meta={hydrated ? songMeta(song, sort) : null} />
           ))}
-        </ul>
+        </SongRows>
       )}
-    </div>
+    </section>
   );
 }

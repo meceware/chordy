@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { ArrowRight, ClipboardPaste } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { BackLink, PageBar } from '@/components/back-link';
+import { Page } from '@/components/page';
 import { SongEditor } from '@/components/song-editor';
 import { detectFormat } from '@/lib/sheet/detect';
 import { chordproToText } from '@/lib/sheet/chordpro-to-text';
@@ -50,28 +52,58 @@ export function SongImport({ allTags, shapes }) {
     });
   };
 
+  const pasteFromClipboard = async () => {
+    try {
+      setPaste(await navigator.clipboard.readText());
+    } catch {
+      // Refused or unsupported; the box still takes a long-press paste.
+    }
+  };
+
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Paste a chord sheet. Chords-over-lyrics and ChordPro are both accepted — the format
-        is detected, and you get to check the result before it is saved.
-      </p>
+    <>
+      <Page className="space-y-4 pt-0">
+        <PageBar>
+          <BackLink href="/" label="Songs" className="mr-auto" />
+          <Button type="button" className="h-10 rounded-xl px-5" onClick={handle} disabled={paste.trim() === ''}>
+            Continue
+            <ArrowRight className="size-4" />
+          </Button>
+        </PageBar>
 
-      <textarea
-        value={paste}
-        onChange={(event) => setPaste(event.target.value)}
-        spellCheck={false}
-        wrap="off"
-        aria-label="Pasted chord sheet"
-        placeholder={'[Verse 1]\nG                  D\nSomewhere over the rainbow'}
-        className="h-[55vh] w-full resize-y rounded-md border border-input bg-background p-3 font-mono text-[0.8125rem] whitespace-pre focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      />
+        <div className="space-y-1">
+          <h1 className="text-[1.75rem] leading-tight font-bold tracking-tight">Add a song</h1>
+          <p className="text-muted-foreground">
+            Paste a chord sheet from anywhere. Chords over lyrics and ChordPro both work, and you check the result
+            before anything is saved.
+          </p>
+        </div>
 
-      <Button type="button" onClick={handle} disabled={paste.trim() === ''}>
-        <ClipboardPaste className="size-4" />
-        Continue
-        <ArrowRight className="size-4" />
-      </Button>
-    </div>
+        <div className="relative">
+          <textarea
+            value={paste}
+            onChange={(event) => setPaste(event.target.value)}
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+            wrap="off"
+            aria-label="Pasted chord sheet"
+            placeholder={'[Verse 1]\nG                  D\nSomewhere over the rainbow'}
+            className="block h-[65dvh] min-h-96 w-full resize-y rounded-xl border border-input bg-card p-4 font-mono text-base whitespace-pre placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:text-[0.9375rem]"
+          />
+          {paste === '' ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="absolute right-3 bottom-3 h-11 rounded-xl"
+              onClick={pasteFromClipboard}
+            >
+              <ClipboardPaste className="size-4" />
+              Paste
+            </Button>
+          ) : null}
+        </div>
+      </Page>
+    </>
   );
 }

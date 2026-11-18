@@ -6,10 +6,14 @@ export const siteConfig = {
   from: 'Chordy',
   // Shared by the auth config and the proxy's cookie check; they must agree.
   cookiePrefix: 'chordy',
+  // Shared by the auth config and the sign-in form: how long an emailed code works, and how soon
+  // another email may be asked for.
+  signIn: { codeSeconds: 20 * 60, resendSeconds: 90 },
   // Hex mirrors of --primary and --background in globals.css, for the places that cannot read
   // CSS: the generated icons, the manifest, and the theme-color meta tags.
-  colors: { brand: '#5959e8', light: '#fcfdfe', dark: '#0d1017' },
+  colors: { brand: '#fbbf24', light: '#fafaf9', dark: '#0c0c0d' },
   links: {
     reactChords: 'https://tombatossals.github.io/react-chords/',
+    github: 'https://github.com/meceware/chordy',
   },
 };

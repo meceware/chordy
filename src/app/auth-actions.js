@@ -2,7 +2,10 @@
 
 import { headers } from 'next/headers';
 import { getAuth } from '@/lib/auth';
-import { emailSchema, codeSchema } from './schema';
+import { z } from 'zod';
+
+const emailSchema = z.object({ email: z.string().trim().min(1, 'An email is required.').email('That does not look like an email.') });
+const codeSchema = z.object({ code: z.string().trim().regex(/^\d{6}$/, 'The code is six digits.') });
 
 export async function sendSignInEmail(rawEmail) {
   const parsed = emailSchema.safeParse({ email: rawEmail });
@@ -12,6 +15,8 @@ export async function sendSignInEmail(rawEmail) {
     // Sending the link also mints the code that travels in the same email, so this is the
     // only entry point; requesting a code directly would send nothing.
     await getAuth().api.signInMagicLink({
+      // A dead link comes back to callbackURL with `?error=`; the home page opens the sign-in
+      // dialog and says so.
       body: { email: parsed.data.email, callbackURL: '/' },
       headers: await headers(),
     });

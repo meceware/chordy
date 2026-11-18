@@ -1,13 +1,28 @@
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 import Database from 'better-sqlite3';
 
 // turbopackIgnore keeps the tracer from treating a runtime-configurable path as a reason
 // to bundle the whole project; the database is a mounted volume, never a build artifact.
-export const databasePath = /* turbopackIgnore: true */ process.env.DATABASE_PATH || 'data/chords.db';
+export const databasePath = /* turbopackIgnore: true */ process.env.DATABASE_PATH || 'data/chordy.db';
+
+// Before 2026-11 the example env file named the database `chords.db` while the image defaulted
+// to `chordy.db`. Opening the new name next to an old file would look like every song vanished,
+// so say so loudly instead of quietly starting an empty library.
+function warnAboutLegacyName() {
+  const legacy = join(dirname(databasePath), 'chords.db');
+  if (basename(databasePath) === 'chords.db') return;
+  if (existsSync(/* turbopackIgnore: true */ databasePath) || !existsSync(/* turbopackIgnore: true */ legacy)) return;
+
+  console.warn(
+    `[chordy] ${databasePath} does not exist but ${legacy} does. Your songs are probably in the ` +
+      'old file: stop the app and rename chords.db (and any -wal/-shm files beside it) to chordy.db.',
+  );
+}
 
 function open() {
   mkdirSync(dirname(databasePath), { recursive: true });
+  warnAboutLegacyName();
 
   const database = new Database(databasePath);
   database.pragma('journal_mode = WAL');

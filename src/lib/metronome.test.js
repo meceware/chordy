@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  patternLabel,
   PRESETS,
   VOICES,
   DEFAULT_PRESET,
@@ -149,4 +150,10 @@ test('tempo is clamped to a playable range', () => {
   assert.equal(clampBpm(10), BPM_MIN);
   assert.equal(clampBpm(1000), BPM_MAX);
   assert.equal(clampBpm(120.4), 120);
+});
+
+test('a pattern is named after the preset it matches, and Custom once painted by hand', () => {
+  assert.equal(patternLabel({ ...PRESETS['4/4'] }), '4/4');
+  assert.equal(patternLabel({ ...PRESETS.bossa }), PRESETS.bossa.label);
+  assert.equal(patternLabel(toggleStep({ ...PRESETS['4/4'] }, 'kick', 1)), 'Custom');
 });

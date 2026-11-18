@@ -7,8 +7,9 @@ import { PICK_PATH } from '../src/lib/pick-path.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const BRAND = siteConfig.colors.brand;
-const GLYPH = '#ffffff';
+// The stage look: an amber pick on the near-black the app opens in.
+const TILE = siteConfig.colors.dark;
+const GLYPH = siteConfig.colors.brand;
 
 /**
  * A guitar pick. `radius` is 0 for the variants a platform masks for itself, and `scale`
@@ -17,7 +18,7 @@ const GLYPH = '#ffffff';
  */
 function tile(radius, scale = 1) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="${radius}" fill="${BRAND}"/>
+  <rect width="512" height="512" rx="${radius}" fill="${TILE}"/>
   <path d="${PICK_PATH}" fill="${GLYPH}" transform="translate(256 256) scale(${scale}) translate(-256 -256)"/>
 </svg>
 `;

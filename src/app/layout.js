@@ -46,10 +46,14 @@ export default async function RootLayout({ children }) {
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full w-full antialiased`}
     >
-      <body className="flex min-h-full w-full flex-col">
+      {/* An app shell: the body never scrolls, so the header stays put and the one scrollbar
+          runs only between the header and a page's bottom bar, never past it. */}
+      <body className="flex h-dvh w-full flex-col overflow-hidden">
         <Providers>
           <Header email={session?.user?.email ?? null} />
-          <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6">{children}</main>
+          <main data-scroll-root className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain">
+            {children}
+          </main>
           <ServiceWorker />
         </Providers>
       </body>

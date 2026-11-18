@@ -1,20 +1,23 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Drum, Maximize, Minimize, Minus, Pause, Play, Plus, Rewind } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { speedForBpm, SPEED_MIN, SPEED_MAX, SPEED_STEP } from '@/lib/scroll-speed';
-import { saveScrollSpeed } from '@/app/songs/[id]/actions';
-import { isTyping } from '@/lib/keys';
+import { ArrowUpToLine, Lightbulb, ListMusic, Maximize, Metronome, Minimize, Minus, Pause, Play, Plus } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { clampSpeed, SPEED_MIN, SPEED_MAX, SPEED_STEP } from '@/lib/scroll-speed';
+import { shouldIgnoreShortcut } from '@/lib/keys';
+import { useHydrated, useSessionFlag } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
 
 // Reaching the bottom does not end play mode: the song is still being played from the last
 // screen, so the screen has to stay awake. The loop idles there instead, and picks up again if
-// you drag back up to repeat a section.
-function useAutoScroll(playing, speed) {
+// you drag back up to repeat a section. It moves the page's own scroll area, not the window: the
+// app shell keeps the window still so the header and the bars never move.
+// `hold` pauses the loop without stopping play, while the glide back to the top is moving the
+// same scroll area; scrolling picks up again from wherever the glide leaves off.
+function useAutoScroll(playing, speed, scrollRef, hold) {
   useEffect(() => {
-    if (!playing) return undefined;
+    const target = scrollRef.current;
+    if (!playing || !target) return undefined;
 
     let frame = 0;
     let previous = 0;
@@ -23,12 +26,14 @@ function useAutoScroll(playing, speed) {
     let carried = 0;
 
     const step = (now) => {
-      if (previous !== 0) {
+      if (hold.current) {
+        carried = 0;
+      } else if (previous !== 0) {
         const travel = (speed * (now - previous)) / 1000 + carried;
         const whole = Math.trunc(travel);
         carried = travel - whole;
 
-        if (whole !== 0) window.scrollBy(0, whole);
+        if (whole !== 0) target.scrollBy(0, whole);
       }
 
       previous = now;
@@ -37,7 +42,37 @@ function useAutoScroll(playing, speed) {
 
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
-  }, [playing, speed]);
+  }, [playing, speed, scrollRef, hold]);
+}
+
+/**
+ * Eases a scroll area back to the top: quick to start, gentle to land, longer for a longer way but
+ * never past ~0.9s. Animated here rather than with the browser's smooth scrolling, which some
+ * browsers skip outright and which a scroll from the play loop would cut short. A touch, a wheel
+ * or a key from the reader stops it where it is. Returns a function that stops it too.
+ */
+function glideToTop(target, onEnd) {
+  const from = target.scrollTop;
+  const duration = Math.min(900, 250 + from / 6);
+  const start = performance.now();
+  let frame = 0;
+
+  const stop = () => {
+    cancelAnimationFrame(frame);
+    for (const type of ['wheel', 'touchstart', 'keydown']) target.removeEventListener(type, stop);
+    onEnd();
+  };
+
+  const step = (now) => {
+    const progress = Math.min(1, (now - start) / duration);
+    target.scrollTop = from * (1 - progress) ** 3;
+    if (progress < 1) frame = requestAnimationFrame(step);
+    else stop();
+  };
+
+  for (const type of ['wheel', 'touchstart', 'keydown']) target.addEventListener(type, stop, { passive: true });
+  frame = requestAnimationFrame(step);
+  return stop;
 }
 
 function useWakeLock(active) {
@@ -75,62 +110,103 @@ function useWakeLock(active) {
   }, [active]);
 }
 
+// One look for every control in the bar, and one "on" state: filled with the accent. Hover only
+// ever applies to the off state, so a pressed button never flickers to grey under the pointer.
+const control = (on) =>
+  cn(
+    'grid place-items-center transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+    'disabled:opacity-40',
+    on ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-accent',
+  );
+
+function BarButton({ on = false, className, children, ...props }) {
+  return (
+    <button type="button" className={cn(control(on), 'size-11 shrink-0 rounded-xl', className)} {...props}>
+      {children}
+    </button>
+  );
+}
+
+/**
+ * A transport: the icon half starts and stops at once, the number half adjusts. Two halves of one
+ * outlined control, so they read as a pair rather than two unrelated buttons. Both halves are a
+ * fixed size — the number half fits three digits — so the control is as wide as it needs to be and
+ * never shifts as the value changes; the small word under the number says what it measures.
+ */
+function Transport({ on, icon, label, value, unit, onToggle, adjust }) {
+  return (
+    <div className="flex h-11 shrink-0 overflow-hidden rounded-xl border border-border">
+      <button type="button" aria-pressed={on} aria-label={label} title={label} onClick={onToggle} className={cn(control(on), 'w-11 shrink-0')}>
+        {icon}
+      </button>
+      {adjust(
+        <span className="flex w-12 flex-col items-center justify-center border-l border-border leading-none hover:bg-accent">
+          <span className="font-mono text-sm font-semibold tabular-nums">{value}</span>
+          <span className="mt-0.5 text-[10px] text-muted-foreground">{unit}</span>
+        </span>,
+      )}
+    </div>
+  );
+}
+
 export function PlayMode({
-  songId,
+  speed,
+  onSpeed,
+  onPanel,
   onTransposeBy,
-  previous = null,
-  next = null,
-  bpm = null,
-  scrollSpeed = null,
+  scrollRef,
+  stage = false,
+  onToggleStage,
   metronomeRunning = false,
+  metronomeSilent = false,
   onToggleMetronome,
 }) {
   const [playing, setPlaying] = useState(false);
-  // A speed set for this song wins over the one derived from its tempo.
-  const [speed, setSpeed] = useState(() => scrollSpeed ?? speedForBpm(bpm));
-  const [stage, setStage] = useState(false);
-  const barRef = useRef(null);
+  // Its own switch, apart from Play: working on one passage means sitting still on it, and the
+  // screen must not go dark just because nothing is scrolling.
+  const [awake, setAwake] = useSessionFlag('chordy.awake');
+  const hydrated = useHydrated();
+  // Assumed available until hydration can ask, so the button does not flash disabled on load.
+  const canWake = !hydrated || 'wakeLock' in navigator;
 
-  useAutoScroll(playing, speed);
-  // A running metronome means you are playing too, scrolling or not.
-  useWakeLock(playing || metronomeRunning);
+  const hold = useRef(false);
+  const stopGlide = useRef(null);
+  useAutoScroll(playing, speed, scrollRef, hold);
+  useEffect(() => () => stopGlide.current?.(), []);
 
-  useEffect(() => {
-    document.body.dataset.stage = String(stage);
-    return () => {
-      delete document.body.dataset.stage;
-    };
-  }, [stage]);
+  // Back to the top as a glide, so you see where you are going; a jump for anyone who has asked
+  // their system for less motion. Scrolling, if it is on, carries on from the top.
+  const toTop = () => {
+    const target = scrollRef.current;
+    if (!target) return;
+    stopGlide.current?.();
 
-  const toggleStage = useCallback(async () => {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await document.documentElement.requestFullscreen();
-    } catch {
-      // Fullscreen can be refused; the stage layout still applies without it.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      target.scrollTop = 0;
+      return;
     }
-    setStage((current) => !current);
-  }, []);
 
-  const nudgeSpeed = useCallback((delta) => {
-    setSpeed((current) => Math.min(SPEED_MAX, Math.max(SPEED_MIN, current + delta)));
-  }, []);
+    hold.current = true;
+    stopGlide.current = glideToTop(target, () => {
+      hold.current = false;
+      stopGlide.current = null;
+    });
+  };
+  // A running metronome means you are playing too, scrolling or not.
+  useWakeLock(awake || playing || metronomeRunning);
 
-  // Coalesced the same way as transpose: holding the stepper costs one write, not one per step.
-  const stored = useRef(scrollSpeed ?? speedForBpm(bpm));
-  useEffect(() => {
-    if (speed === stored.current) return;
+  const nudgeSpeed = useCallback((delta) => onSpeed((current) => clampSpeed(current + delta)), [onSpeed]);
 
-    const timer = setTimeout(() => {
-      stored.current = speed;
-      saveScrollSpeed(songId, speed);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [songId, speed]);
+  // An empty grid has nothing to play, so the one-tap start opens the grid instead of doing
+  // nothing silently.
+  const beat = useCallback(() => {
+    if (metronomeSilent && !metronomeRunning) onPanel('metronome');
+    else onToggleMetronome?.();
+  }, [metronomeRunning, metronomeSilent, onPanel, onToggleMetronome]);
 
   useEffect(() => {
     const onKey = (event) => {
-      if (isTyping(event) || event.metaKey || event.ctrlKey) return;
+      if (shouldIgnoreShortcut(event)) return;
 
       switch (event.key) {
         case ' ':
@@ -144,10 +220,13 @@ export function PlayMode({
           nudgeSpeed(SPEED_STEP);
           break;
         case 'f':
-          toggleStage();
+          onToggleStage?.();
           break;
         case 'p':
-          onToggleMetronome?.();
+          beat();
+          break;
+        case 'w':
+          setAwake((current) => !current);
           break;
         case '+':
         case '=':
@@ -163,138 +242,83 @@ export function PlayMode({
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [nudgeSpeed, onToggleMetronome, onTransposeBy, toggleStage]);
+  }, [beat, nudgeSpeed, onToggleStage, onTransposeBy, setAwake]);
 
   return (
-    <div
-      ref={barRef}
-      className={cn(
-        'no-print fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 backdrop-blur',
-        'supports-[padding:env(safe-area-inset-bottom)]:pb-[env(safe-area-inset-bottom)]',
-      )}
-    >
-      <div className="mx-auto flex max-w-4xl items-center gap-1 px-2 py-2 sm:gap-2 sm:px-3">
-        <Button
-          asChild={Boolean(previous)}
-          type="button"
-          size="icon"
-          variant="ghost"
-          className="size-8"
-          disabled={!previous}
-          aria-label={previous ? `Previous song: ${previous.title}` : 'No previous song'}
-          title={previous?.title}
-        >
-          {previous ? (
-            <Link href={`/songs/${previous.id}`}>
-              <ChevronLeft className="size-4" />
-            </Link>
-          ) : (
-            <ChevronLeft className="size-4" />
+    <nav aria-label="Play controls" className="no-print border-t border-border bg-background">
+      {/* Spread across a phone's width; gathered in the middle of a wide one. */}
+      <div className="mx-auto flex max-w-3xl items-center justify-between gap-1.5 px-3 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] sm:justify-center sm:gap-2.5">
+        <BarButton aria-label="Songs" title="Songs" onClick={() => onPanel('songs')}>
+          <ListMusic className="size-5" />
+        </BarButton>
+
+        <BarButton aria-label="Back to the top" title="Back to the top" onClick={toTop}>
+          <ArrowUpToLine className="size-5" />
+        </BarButton>
+
+        <Transport
+          on={playing}
+          label={playing ? 'Pause scrolling (Space)' : 'Start scrolling (Space)'}
+          icon={playing ? <Pause className="size-[18px] fill-current" /> : <Play className="size-[18px] fill-current" />}
+          value={speed}
+          unit="speed"
+          onToggle={() => setPlaying(!playing)}
+          adjust={(face) => (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" aria-label={`Scroll speed ${speed}`} className="flex">
+                  {face}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="w-60 space-y-2 rounded-xl">
+                <p className="text-xs font-medium text-muted-foreground">Scroll speed · pixels per second</p>
+                <div className="flex h-12 items-center justify-between rounded-xl border border-input">
+                  <BarButton aria-label="Scroll slower" title="Scroll slower ( [ )" disabled={speed <= SPEED_MIN} onClick={() => nudgeSpeed(-SPEED_STEP)} className="size-12">
+                    <Minus className="size-4" />
+                  </BarButton>
+                  <span className="font-mono text-xl font-semibold tabular-nums">{speed}</span>
+                  <BarButton aria-label="Scroll faster" title="Scroll faster ( ] )" disabled={speed >= SPEED_MAX} onClick={() => nudgeSpeed(SPEED_STEP)} className="size-12">
+                    <Plus className="size-4" />
+                  </BarButton>
+                </div>
+              </PopoverContent>
+            </Popover>
           )}
-        </Button>
+        />
 
-        <Button
-          asChild={Boolean(next)}
-          type="button"
-          size="icon"
-          variant="ghost"
-          className="size-8"
-          disabled={!next}
-          aria-label={next ? `Next song: ${next.title}` : 'No next song'}
-          title={next?.title}
-        >
-          {next ? (
-            <Link href={`/songs/${next.id}`}>
-              <ChevronRight className="size-4" />
-            </Link>
-          ) : (
-            <ChevronRight className="size-4" />
-          )}
-        </Button>
-
-        <Button
-          type="button"
-          size="sm"
-          variant={playing ? 'default' : 'outline'}
-          onClick={() => setPlaying(!playing)}
-          aria-pressed={playing}
-          title={`${playing ? 'Pause' : 'Play'} (Space)`}
-        >
-          {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
-          <span className="hidden sm:inline">{playing ? 'Pause' : 'Play'}</span>
-        </Button>
-
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className="size-8"
-          aria-label="Back to the start"
-          title="Back to the start"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}
-        >
-          <Rewind className="size-4" />
-        </Button>
-
-        <Button
-          type="button"
-          size="icon"
-          variant={metronomeRunning ? 'default' : 'ghost'}
-          className="size-8"
-          aria-label={metronomeRunning ? 'Stop the metronome' : 'Start the metronome'}
+        {/* Only the start: the metronome is shaped in the song's card, before you play. */}
+        <BarButton
+          on={metronomeRunning}
           aria-pressed={metronomeRunning}
-          title={`${metronomeRunning ? 'Stop' : 'Start'} the metronome (P)`}
-          onClick={() => onToggleMetronome?.()}
+          aria-label={metronomeRunning ? 'Stop the metronome (P)' : 'Start the metronome (P)'}
+          title={metronomeRunning ? 'Stop the metronome (P)' : 'Start the metronome (P)'}
+          onClick={beat}
         >
-          <Drum className="size-4" />
-        </Button>
+          <Metronome className="size-5" />
+        </BarButton>
 
-        <div className="ml-auto flex items-center">
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="size-8"
-            aria-label="Scroll slower"
-            title="Scroll slower ( [ )"
-            disabled={speed <= SPEED_MIN}
-            onClick={() => nudgeSpeed(-SPEED_STEP)}
-          >
-            <Minus className="size-4" />
-          </Button>
+        <BarButton
+          on={awake}
+          disabled={!canWake}
+          aria-pressed={awake}
+          aria-label="Keep the screen on (W)"
+          title={canWake ? 'Keep the screen on (W)' : 'This browser cannot keep the screen on'}
+          onClick={() => setAwake(!awake)}
+        >
+          <Lightbulb className="size-5" />
+        </BarButton>
 
-          <span className="min-w-8 text-center font-mono text-sm text-muted-foreground tabular-nums sm:min-w-16">
-            {speed}
-            <span className="hidden sm:inline"> px/s</span>
-          </span>
-
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="size-8"
-            aria-label="Scroll faster"
-            title="Scroll faster ( ] )"
-            disabled={speed >= SPEED_MAX}
-            onClick={() => nudgeSpeed(SPEED_STEP)}
-          >
-            <Plus className="size-4" />
-          </Button>
-        </div>
-
-        <Button
-          type="button"
-          size="icon"
-          variant={stage ? 'default' : 'ghost'}
-          className="size-8"
-          aria-label={stage ? 'Leave stage mode' : 'Stage mode'}
-          title={`${stage ? 'Leave stage mode' : 'Stage mode'} (F)`}
+        {/* The play bar stays on screen in stage mode, so this is also the way back out. */}
+        <BarButton
+          on={stage}
           aria-pressed={stage}
-          onClick={toggleStage}
+          aria-label={stage ? 'Leave stage mode (F)' : 'Stage mode: fullscreen, sheet only (F)'}
+          title={stage ? 'Leave stage mode (F)' : 'Stage mode: fullscreen, sheet only (F)'}
+          onClick={onToggleStage}
         >
-          {stage ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
-        </Button>
+          {stage ? <Minimize className="size-5" /> : <Maximize className="size-5" />}
+        </BarButton>
       </div>
-    </div>
+    </nav>
   );
 }

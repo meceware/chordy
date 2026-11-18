@@ -15,31 +15,30 @@
   },
   "dependencies": {
     "@tombatossals/chords-db": "^0.5.1",
-    "@tombatossals/react-chords": "github:tombatossals/react-chords#3788063d7907f2810b2ed908e6c075468ef91bb5",
-    "better-auth": "^1.7.5",
-    "better-sqlite3": "^13.0.3",
+    "@tombatossals/react-chords": "github:tombatossals/react-chords#3788063",
+    "better-auth": "^1.7.25",
+    "better-sqlite3": "^13.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "cmdk": "^1.1.1",
     "fuse.js": "^7.5.0",
     "input-otp": "^1.5.0",
-    "lucide-react": "^1.47.0",
-    "next": "16.3.5",
+    "lucide-react": "^1.75.0",
+    "next": "16.4.6",
     "next-themes": "^0.4.6",
-    "nodemailer": "^10.0.10",
-    "radix-ui": "^1.6.7",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
+    "nodemailer": "^10.6.0",
+    "radix-ui": "^1.8.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "tailwind-merge": "^3.7.0",
     "vaul": "^1.1.2",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.5",
-    "sharp": "^0.35.4",
-    "tailwindcss": "^4"
+    "@tailwindcss/postcss": "^4.3.5",
+    "eslint": "^10.15.0",
+    "eslint-config-next": "16.4.6",
+    "sharp": "^0.35.5",
+    "tailwindcss": "^4.3.5"
   },
   "type": "module"
 }

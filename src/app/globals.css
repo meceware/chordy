@@ -3,73 +3,80 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.75rem;
 
-  --background: oklch(0.994 0.002 265);
-  --foreground: oklch(0.21 0.02 265);
+  /* Light is the second theme: the same structure as the dark stage, on warm white, with the
+     chords in orange, since amber text dark enough to read on white turns brown. */
+  --background: #fafaf9;
+  --foreground: #18181b;
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.02 265);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.02 265);
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
 
-  --primary: oklch(0.55 0.21 277);
-  --primary-foreground: oklch(0.985 0.008 277);
+  --primary: #f5b014;
+  --primary-foreground: #1a1400;
 
-  --secondary: oklch(0.965 0.008 265);
-  --secondary-foreground: oklch(0.32 0.03 265);
+  --secondary: #f1f1f0;
+  --secondary-foreground: #27272a;
 
-  --muted: oklch(0.965 0.008 265);
-  --muted-foreground: oklch(0.53 0.022 265);
+  --muted: #f1f1f0;
+  --muted-foreground: #6b6b73;
 
-  --accent: oklch(0.955 0.028 277);
-  --accent-foreground: oklch(0.4 0.15 277);
+  --accent: #f1f1f0;
+  --accent-foreground: #18181b;
 
-  --destructive: oklch(0.58 0.22 27);
-  --destructive-foreground: oklch(0.985 0.008 27);
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
 
-  --border: oklch(0.915 0.012 265);
-  --input: oklch(0.915 0.012 265);
-  --ring: oklch(0.55 0.21 277);
+  --border: #e4e4e2;
+  --input: #d6d6d3;
+  --ring: #d99a0b;
 
-  /* Sheet rendering. Chords must stay legible at arm's length, so they carry
-     more chroma than ordinary links and are tuned per theme rather than shared. */
-  --chord: oklch(0.49 0.21 277);
-  --chord-hover: oklch(0.42 0.22 277);
-  --sheet-foreground: oklch(0.16 0.02 265);
+  /* Chords must stay legible at arm's length, so they get their own tokens per theme. */
+  /* Yellow dark enough to read as text on white turns brown, so the light page leans orange: a
+     red-leaning hue keeps its saturation when darkened, where amber goes muddy. */
+  --chord: #e05300;
+  --chord-hover: #c2410c;
+  /* The logo, stars, accent icons and filled shapes: the same yellow as the dark theme. */
+  --brand: #f5b014;
+  --sheet-foreground: #111113;
 }
 
+/* The stage theme, and the default: near-black, high contrast, amber chords for dim rooms. */
 .dark {
-  --background: oklch(0.175 0.015 265);
-  --foreground: oklch(0.95 0.01 265);
+  --background: #0c0c0d;
+  --foreground: #f4f4f5;
 
-  --card: oklch(0.215 0.018 265);
-  --card-foreground: oklch(0.95 0.01 265);
-  --popover: oklch(0.215 0.018 265);
-  --popover-foreground: oklch(0.95 0.01 265);
+  --card: #161618;
+  --card-foreground: #f4f4f5;
+  --popover: #161618;
+  --popover-foreground: #f4f4f5;
 
-  --primary: oklch(0.72 0.16 280);
-  --primary-foreground: oklch(0.19 0.04 280);
+  --primary: #fbbf24;
+  --primary-foreground: #1a1400;
 
-  --secondary: oklch(0.265 0.02 265);
-  --secondary-foreground: oklch(0.93 0.012 265);
+  --secondary: #1c1c1f;
+  --secondary-foreground: #e4e4e7;
 
-  --muted: oklch(0.265 0.02 265);
-  --muted-foreground: oklch(0.7 0.02 265);
+  --muted: #1c1c1f;
+  --muted-foreground: #9a9aa3;
 
-  --accent: oklch(0.31 0.055 280);
-  --accent-foreground: oklch(0.89 0.06 280);
+  --accent: #222226;
+  --accent-foreground: #fafafa;
 
-  --destructive: oklch(0.65 0.2 25);
-  --destructive-foreground: oklch(0.18 0.04 25);
+  --destructive: #f87171;
+  --destructive-foreground: #1a0505;
 
-  --border: oklch(0.3 0.02 265);
-  --input: oklch(0.32 0.02 265);
-  --ring: oklch(0.72 0.16 280);
+  --border: #26262a;
+  --input: #2e2e33;
+  --ring: #fbbf24;
 
-  --chord: oklch(0.79 0.15 280);
-  --chord-hover: oklch(0.87 0.12 280);
-  --sheet-foreground: oklch(0.97 0.008 265);
+  --chord: #fbbf24;
+  --chord-hover: #fde68a;
+  --brand: #fbbf24;
+  --sheet-foreground: #fafafa;
 }
 
 @theme inline {
@@ -95,6 +102,7 @@
 
   --color-chord: var(--chord);
   --color-chord-hover: var(--chord-hover);
+  --color-brand: var(--brand);
   --color-sheet-foreground: var(--sheet-foreground);
 
   --font-sans: var(--font-geist-sans);
@@ -113,19 +121,48 @@
 
   body {
     @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Tailwind 4 gives buttons the default arrow, so a button sat beside a link (Favourite beside
+     Listen) felt dead under the pointer. Everything you can press shows the hand, as links do. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
   }
 }
 
-/* Driven by the font-size control; the sheet scales without touching browser zoom.
-   The narrow default fits a typical 40-character lyric line on a phone without panning. */
+/* react-chords hard-codes #444/#555 ink, white finger numbers and Verdana as SVG presentation
+   attributes. Any CSS outranks those, so the diagrams take the theme's ink and the app's font
+   instead of turning into dark grey on a dark stage. */
+.chord-diagram svg text {
+  font-family: var(--font-sans);
+  font-weight: 600;
+}
+
+.chord-diagram [stroke='#444'] {
+  stroke: var(--foreground);
+}
+
+.chord-diagram [fill='#444'],
+.chord-diagram [fill='#555'] {
+  fill: var(--foreground);
+}
+
+.chord-diagram text[fill='white'] {
+  fill: var(--background);
+}
+
+/* Driven by the font-size control; the sheet scales without touching browser zoom. Lines always
+   wrap, with each chord kept over its syllable, so the size can favour reading at arm's length. */
 .chord-sheet {
-  font-size: var(--sheet-size, 0.8125rem);
-  line-height: 1.5;
+  font-size: var(--sheet-size, 0.9375rem);
+  line-height: 1.55;
 }
 
 @media (min-width: 640px) {
   .chord-sheet {
-    font-size: var(--sheet-size, 1rem);
+    font-size: var(--sheet-size, 1.0625rem);
   }
 }
 
@@ -134,13 +171,18 @@ body[data-stage='true'] .hide-in-stage {
   display: none !important;
 }
 
-body[data-stage='true'] main {
-  padding-top: 0.5rem;
-}
-
 @media print {
   .no-print {
     display: none !important;
+  }
+
+  /* The app shell scrolls inside <main>; paper needs the whole document laid out instead. */
+  html,
+  body,
+  main,
+  [data-scroll-root] {
+    height: auto !important;
+    overflow: visible !important;
   }
 
   .chord-sheet {

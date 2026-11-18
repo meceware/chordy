@@ -1,11 +1,12 @@
 import { WifiOff } from 'lucide-react';
 import { RetryButton } from './retry-button';
+import { Page } from '@/components/page';
 
 export const metadata = { title: 'Offline' };
 
 export default function OfflinePage() {
   return (
-    <div className="mx-auto max-w-sm space-y-4 py-16 text-center">
+    <Page className="mx-auto max-w-sm space-y-4 py-16 text-center">
       <WifiOff className="mx-auto size-8 text-muted-foreground" />
       <h1 className="text-2xl font-semibold tracking-tight">You are offline</h1>
       <p className="text-sm text-muted-foreground">
@@ -13,6 +14,6 @@ export default function OfflinePage() {
         still there.
       </p>
       <RetryButton />
-    </div>
+    </Page>
   );
 }

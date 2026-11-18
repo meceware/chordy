@@ -11,13 +11,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { signOutEverywhere } from '@/app/login/action';
+import { signOutEverywhere } from '@/app/auth-actions';
+import { clearPendingSignIn } from '@/lib/pending-sign-in';
 
 function Avatar({ email, className }) {
   return (
     <span
       aria-hidden
-      className={`grid place-items-center rounded-full bg-primary font-semibold text-primary-foreground ${className}`}
+      className={`grid place-items-center rounded-full bg-secondary font-semibold text-secondary-foreground ${className}`}
     >
       {email.trim().charAt(0).toUpperCase()}
     </span>
@@ -35,8 +36,8 @@ export function AccountMenu({ email }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Account: ${email}`}>
-          <Avatar email={email} className="size-7 text-xs" />
+        <Button variant="ghost" size="icon" className="size-11 rounded-xl" aria-label={`Account: ${email}`}>
+          <Avatar email={email} className="size-8 text-sm" />
         </Button>
       </DropdownMenuTrigger>
 
@@ -52,12 +53,16 @@ export function AccountMenu({ email }) {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem
+          className="min-h-11"
           variant="destructive"
           disabled={pending}
           onSelect={() =>
             startTransition(async () => {
               await signOutEverywhere();
-              router.push('/login');
+              // A code step left over from signing in by link would otherwise greet the next visitor,
+              // since the sign-in form's memory outlives moving between pages.
+              clearPendingSignIn();
+              router.push('/');
               router.refresh();
             })
           }

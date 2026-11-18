@@ -17,10 +17,11 @@ export function ModeToggle() {
     <Button
       variant="ghost"
       size="icon"
+      className="size-11 rounded-xl"
       aria-label={hydrated ? (dark ? 'Switch to light mode' : 'Switch to dark mode') : 'Toggle theme'}
       onClick={() => setTheme(dark ? 'light' : 'dark')}
     >
-      {dark ? <Moon className="size-5 text-sky-400" /> : <Sun className="size-5 text-amber-500" />}
+      {dark ? <Moon className="size-5" /> : <Sun className="size-5" />}
     </Button>
   );
 }

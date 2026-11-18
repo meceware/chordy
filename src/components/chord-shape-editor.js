@@ -62,13 +62,13 @@ export function ChordShapeEditor({ chord, onDone }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm">
-        <span className="text-xs tracking-wide text-muted-foreground uppercase">From fret</span>
+        <span className="text-sm font-medium">From fret</span>
         <div className="flex items-center rounded-md border border-input">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7"
+            className="size-10"
             aria-label="Move the shape down the neck"
             disabled={firstFret <= 1}
             onClick={() => setFirstFret(firstFret - 1)}
@@ -80,7 +80,7 @@ export function ChordShapeEditor({ chord, onDone }) {
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7"
+            className="size-10"
             aria-label="Move the shape up the neck"
             disabled={firstFret >= HIGHEST_START}
             onClick={() => setFirstFret(firstFret + 1)}
@@ -91,7 +91,7 @@ export function ChordShapeEditor({ chord, onDone }) {
       </div>
 
       <div className="flex gap-4">
-        <div className="grid grid-cols-[auto_repeat(6,minmax(0,1fr))] gap-px text-center text-xs">
+        <div data-vaul-no-drag className="grid grid-cols-[auto_repeat(6,minmax(0,1fr))] gap-px text-center text-xs">
           <span />
           {STRINGS.map((note, index) => (
             <button
@@ -120,7 +120,7 @@ export function ChordShapeEditor({ chord, onDone }) {
                   aria-label={`${note} string fret ${firstFret + position - 1}`}
                   onClick={() => setString(index, position)}
                   className={cn(
-                    'size-7 border border-border',
+                    'size-9 border border-border',
                     frets[index] === position ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
                   )}
                 >
@@ -144,14 +144,14 @@ export function ChordShapeEditor({ chord, onDone }) {
       </div>
 
       <label className="block">
-        <span className="mb-1 block text-xs tracking-wide text-muted-foreground uppercase">
-          Or type it — low E first, x for muted, 0 for open
+        <span className="mb-1.5 block text-sm font-medium">
+          Or type it <span className="font-normal text-muted-foreground">— low E first, x for muted, 0 for open</span>
         </span>
         <Input
           value={text}
           onChange={(event) => onText(event.target.value)}
           aria-label="Shape as text"
-          className="font-mono"
+          className="h-11 font-mono"
           placeholder="x 3 2 0 1 0"
         />
       </label>
@@ -159,11 +159,11 @@ export function ChordShapeEditor({ chord, onDone }) {
       {problem ? <p className="text-sm text-destructive">{problem}</p> : null}
 
       <div className="flex gap-2">
-        <Button type="button" size="sm" onClick={save} disabled={pending}>
+        <Button type="button" className="h-11 flex-1" onClick={save} disabled={pending}>
           <Check className="size-4" />
           {pending ? 'Saving…' : `Save shape for ${chord}`}
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+        <Button type="button" variant="ghost" className="h-11" onClick={onDone}>
           <X className="size-4" />
           Cancel
         </Button>

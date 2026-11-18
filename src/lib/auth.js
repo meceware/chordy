@@ -3,6 +3,7 @@ import { nextCookies } from 'better-auth/next-js';
 import { magicLink, emailOTP } from 'better-auth/plugins';
 import { getDb } from './db.js';
 import { mailFrom, mailSend } from './mail.js';
+import { signUpDisabled } from './signup.js';
 import { siteConfig } from '../components/config.js';
 
 const html = ({ url, token }) => `
@@ -16,7 +17,7 @@ const html = ({ url, token }) => `
             <div style="margin: 1rem 0;">
               <p>Click the link below to sign in.</p>
               <p>
-                <a href="${url}" target="_blank" style="padding: 0.75rem 1.25rem; border-radius: 0.25rem; color: #FFF; background: #4f46e5; display: inline-block; margin: 0.5rem 0; text-decoration: none;">
+                <a href="${url}" target="_blank" style="padding: 0.75rem 1.25rem; border-radius: 0.75rem; color: #1a1400; background: ${siteConfig.colors.brand}; font-weight: 600; display: inline-block; margin: 0.5rem 0; text-decoration: none;">
                   Sign in to your account
                 </a>
               </p>
@@ -38,7 +39,7 @@ const html = ({ url, token }) => `
 `;
 
 const text = ({ url, token }) =>
-  `Sign in to ${siteConfig.from}\n\nCopy and paste this link into your browser:\n${url}\n\nOr use this code to sign in: ${token}\n\nIf you didn't ask to sign in, you can ignore this email.\n\nThanks,\n${siteConfig.from}`;
+  `Sign in to ${siteConfig.name}\n\nCopy and paste this link into your browser:\n${url}\n\nOr use this code to sign in: ${token}\n\nIf you didn't ask to sign in, you can ignore this email.\n\nThanks,\n${siteConfig.from}`;
 
 export const ipResolution = {
   ipAddressHeaders: ['x-forwarded-for', 'cf-connecting-ip'],
@@ -57,6 +58,15 @@ export function getAuth() {
     emailAndPassword: {
       enabled: false,
     },
+    // The last lock, behind both plugins' disableSignUp: whatever path tries to make an account,
+    // the database refuses it while sign-up is closed.
+    databaseHooks: {
+      user: {
+        create: {
+          before: async () => (signUpDisabled ? false : undefined),
+        },
+      },
+    },
     session: {
       expiresIn: 60 * 60 * 24 * 14,
       updateAge: 60 * 60 * 24,
@@ -64,7 +74,14 @@ export function getAuth() {
     plugins: [
       magicLink({
         expiresIn: 2 * 60 * 60,
-        sendMagicLink: async ({ email, url }) => {
+        // A link for an address with no account signs nobody in while sign-up is closed.
+        disableSignUp: signUpDisabled,
+        sendMagicLink: async ({ email, url }, ctx) => {
+          // While sign-up is closed, an address with no account gets exactly the response an
+          // existing one does, so the form cannot be used to find out who has an account, and
+          // no mail goes out: the server cannot be made to email strangers.
+          if (signUpDisabled && !(await ctx.context.internalAdapter.findUserByEmail(email))) return;
+
           // The one-time code is minted here so a single email carries both ways in, which is
           // why emailOTP's own sender below is intentionally silent.
           const otp = await getAuth().api.createVerificationOTP({
@@ -81,7 +98,9 @@ export function getAuth() {
         },
       }),
       emailOTP({
-        expiresIn: 20 * 60,
+        expiresIn: siteConfig.signIn.codeSeconds,
+        // The same rule for the code: it never makes an account while sign-up is closed.
+        disableSignUp: signUpDisabled,
         // Deliberately sends nothing: the code travels inside the magic-link email above.
         // Anything that requests a code without going through sendMagicLink gets silence.
         async sendVerificationOTP() {},
@@ -94,9 +113,9 @@ export function getAuth() {
       cookiePrefix: siteConfig.cookiePrefix,
       ipAddress: ipResolution,
     },
-      logger: {
-        level: 'warn',
-      },
+    logger: {
+      level: 'warn',
+    },
   });
 
   return instance;

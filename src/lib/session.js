@@ -1,5 +1,5 @@
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { headers } from 'next/headers.js';
+import { redirect } from 'next/navigation.js';
 import { getAuth } from './auth.js';
 
 export async function currentSession() {
@@ -21,6 +21,6 @@ export async function currentUserId() {
 
 export async function requireUserId() {
   const id = await currentUserId();
-  if (!id) redirect('/login');
+  if (!id) redirect('/');
   return id;
 }
