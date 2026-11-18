@@ -7,7 +7,7 @@ const PUBLIC = ['/api/auth', '/offline'];
 
 // The home page is the one exact path anyone may load: signed out it renders the static landing
 // page and reads nothing; signed in it is the library, scoped by the session like every other
-// page. Exact match only — `/songs/...` and everything else stays behind the redirect below.
+// page. Exact match only `/songs/...` and everything else stays behind the redirect below.
 const PUBLIC_EXACT = ['/'];
 
 export async function proxy(request) {
