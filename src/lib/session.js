@@ -1,5 +1,5 @@
-import { headers } from 'next/headers.js';
-import { redirect } from 'next/navigation.js';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { getAuth } from './auth.js';
 
 export async function currentSession() {

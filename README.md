@@ -185,6 +185,7 @@ All settings live in `.env`. After changing one, run `docker compose up -d` to a
 | `EMAIL_SERVER_PORT` | no | `587` by default. Use `465` if your provider says "SSL" or "implicit TLS". |
 | `EMAIL_SERVER_USER`, `EMAIL_SERVER_PASSWORD` | no | Your SMTP login. Leave both empty for a relay that recognises your server by its address. |
 | `EMAIL_FROM` | no | The address emails come from. Your provider must allow sending as it. |
+| `UMAMI_SCRIPT_URL`, `UMAMI_WEBSITE_ID` | no | Count visits with your own [Umami](https://umami.is). The script address is your Umami's tracker (e.g. `https://stats.example.com/script.js`), or a path on Chordy's own address that your proxy forwards to Umami. The ID is the Website ID Umami shows for this site. Both must be set; visits are counted only on `SITE_URL`'s address. |
 
 ---
 

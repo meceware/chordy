@@ -37,6 +37,26 @@ export const viewport = {
   ],
 };
 
+/**
+ * Umami's tracker, only when both settings are there (`.env.example`). Read per request rather
+ * than at build, so turning it on or off is an `.env` change and a restart. `data-domains` keeps
+ * it to the site's own address, so a development copy never counts as a visit.
+ */
+function VisitCounter() {
+  const src = process.env.UMAMI_SCRIPT_URL;
+  const id = process.env.UMAMI_WEBSITE_ID;
+  if (!src || !id) return null;
+
+  let domain;
+  try {
+    domain = new URL(siteConfig.url).hostname;
+  } catch {
+    domain = undefined;
+  }
+
+  return <script defer src={src} data-website-id={id} data-domains={domain} />;
+}
+
 export default async function RootLayout({ children }) {
   const session = await currentSession();
 
@@ -56,6 +76,7 @@ export default async function RootLayout({ children }) {
           </main>
           <ServiceWorker />
         </Providers>
+        <VisitCounter />
       </body>
     </html>
   );
