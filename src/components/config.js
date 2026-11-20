@@ -12,6 +12,9 @@ export const siteConfig = {
   // Hex mirrors of --primary and --background in globals.css, for the places that cannot read
   // CSS: the generated icons, the manifest, and the theme-color meta tags.
   colors: { brand: '#fbbf24', light: '#fafaf9', dark: '#0c0c0d' },
+  // Bump after `npm run icons`. The manifest asks for `/icons/…?v=<this>`, so an installed app sees
+  // new icon addresses and fetches them, rather than keeping the copies it has cached.
+  iconVersion: 1,
   links: {
     reactChords: 'https://tombatossals.github.io/react-chords/',
     github: 'https://github.com/meceware/chordy',

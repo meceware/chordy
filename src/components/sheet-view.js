@@ -26,6 +26,11 @@ function ChordButton({ text, onSelect, className }) {
   );
 }
 
+// For every line that keeps its own spacing (chords with no words under them, lyrics alone, tab):
+// the spaces stay as written, and the line carries on below at the screen's edge instead of
+// running off it. A run with no space to break at (a tab line) breaks anywhere.
+const KEEP_SPACING = 'whitespace-pre-wrap [overflow-wrap:anywhere]';
+
 function ExactLine({ line, onSelect }) {
   const parts = [];
   let cursor = 0;
@@ -43,7 +48,7 @@ function ExactLine({ line, onSelect }) {
 
   if (cursor < line.text.length) parts.push(line.text.slice(cursor));
 
-  return <div className="font-semibold whitespace-pre">{parts}</div>;
+  return <div className={cn('font-semibold', KEEP_SPACING)}>{parts}</div>;
 }
 
 function WrappedPair({ chordLine, lyricLine, onSelect }) {
@@ -52,9 +57,9 @@ function WrappedPair({ chordLine, lyricLine, onSelect }) {
   return (
     <div className="flex flex-wrap items-start">
       {words.map((word, index) => (
-        // Fragments are `pre` so that nothing can shrink a word and wrap it inside itself; a
-        // word wider than the screen pans with the sheet instead.
-        <span key={index} className="flex items-start">
+        // A word, its chords above it, moves to the next row as one. Only a word wider than the
+        // screen gives way: it shrinks, and its words break under their chords where they must.
+        <span key={index} className="flex min-w-0 items-start">
           {word.map((segment, segmentIndex) => (
             // A fixed first row keeps the chord and lyric rows aligned across words even
             // where a word has no chord above it.
@@ -66,7 +71,7 @@ function WrappedPair({ chordLine, lyricLine, onSelect }) {
               ) : (
                 <span />
               )}
-              <span className="whitespace-pre">{segment.text}</span>
+              <span className={KEEP_SPACING}>{segment.text}</span>
             </span>
           ))}
         </span>
@@ -121,7 +126,7 @@ export function SheetView({
 
     if (line.type === 'tab') {
       if (showChords) {
-        rendered.push(<div key={index} className="whitespace-pre text-muted-foreground">{line.text}</div>);
+        rendered.push(<div key={index} className={cn('text-muted-foreground', KEEP_SPACING)}>{line.text}</div>);
       }
       continue;
     }
@@ -144,7 +149,7 @@ export function SheetView({
 
     if (line.type === 'lyrics') {
       if (showLyrics) {
-        rendered.push(<div key={index} className={paired ? undefined : 'whitespace-pre'}>{line.text}</div>);
+        rendered.push(<div key={index} className={paired ? undefined : KEEP_SPACING}>{line.text}</div>);
       }
       continue;
     }
@@ -155,10 +160,10 @@ export function SheetView({
   return (
     <>
       <div
-        className={cn(
-          'chord-sheet font-mono text-sheet-foreground',
-          '-mx-4 overflow-x-auto px-4',
-        )}
+        // Not a scroll box in either direction: every line wraps, so the page is the one thing
+        // that scrolls. (A sideways box also scrolled up and down by the 4px the chords' tap areas
+        // reach past the last line, and took the first swipe each way.)
+        className="chord-sheet min-w-0 font-mono text-sheet-foreground"
         style={fontSize ? { '--sheet-size': `${fontSize}rem` } : undefined}
       >
         {rendered}
