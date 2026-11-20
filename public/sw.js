@@ -1,6 +1,5 @@
-// Bump on release to drop the previous cache; everything under /_next/static is content-hashed,
-// so only the precache list below can go stale.
-const CACHE = 'chordy-v2';
+// Named after the release
+const CACHE = 'chordy-v1';
 
 // Bare paths only. Next serves its own icon conventions under a content hash, so `/icon.svg`
 // and `/apple-icon.png` would never be read back at the URL the page asks for.
@@ -40,8 +39,21 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-const isAsset = (pathname) =>
-  pathname.startsWith('/_next/static/') || pathname.startsWith('/icons/') || PRECACHE.includes(pathname);
+// Content-hashed, so a cached copy can never be out of date.
+const isHashed = (pathname) => pathname.startsWith('/_next/static/');
+
+// Same address whatever is inside: the icons, the manifest, the favicon, the offline page. These
+// come from the network whenever there is one, so a new icon reaches phones on their next visit;
+// the cached copy is only for when there is no connection.
+const isNamed = (pathname) => pathname.startsWith('/icons/') || PRECACHE.includes(pathname);
+
+const keep = (event, request, response) => {
+  if (response.ok) {
+    const copy = response.clone();
+    event.waitUntil(caches.open(CACHE).then((cache) => cache.put(request, copy)));
+  }
+  return response;
+};
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -56,20 +68,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (isAsset(url.pathname)) {
-    event.respondWith(
-      caches.match(request).then(
-        (hit) =>
-          hit ??
-          fetch(request).then((response) => {
-            if (response.ok) {
-              const copy = response.clone();
-              event.waitUntil(caches.open(CACHE).then((cache) => cache.put(request, copy)));
-            }
+  if (isHashed(url.pathname)) {
+    event.respondWith(caches.match(request).then((hit) => hit ?? fetch(request).then((response) => keep(event, request, response))));
+    return;
+  }
 
-            return response;
-          }),
-      ),
+  if (isNamed(url.pathname)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => keep(event, request, response))
+        .catch(() => caches.match(request)),
     );
   }
 });
