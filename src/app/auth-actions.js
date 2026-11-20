@@ -21,7 +21,11 @@ export async function sendSignInEmail(rawEmail) {
       headers: await headers(),
     });
     return { sent: true, email: parsed.data.email };
-  } catch {
+  } catch (error) {
+    // The visitor is only told it failed; the log says why (an SMTP server that can't be reached,
+    // refused credentials), without the address it was for.
+    const cause = error?.cause?.message ? ` (${error.cause.message})` : '';
+    console.error(`Sign-in email not sent: ${error?.code ? `${error.code} ` : ''}${error?.message ?? error}${cause}`);
     return { error: 'The email could not be sent. Try again in a moment.' };
   }
 }

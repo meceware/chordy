@@ -59,7 +59,8 @@ function Chip({ active, onClick, colors, count, children }) {
       onClick={onClick}
       className={cn(
         // The pseudo-element lifts the tap target to 44px without making the chip itself taller.
-        'relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium ring-1 transition-colors ring-inset',
+        // `grow`: the chips on a full row share its spare width, so every row ends flush.
+        'relative inline-flex h-9 shrink-0 grow items-center justify-center gap-1.5 rounded-full px-3.5 text-sm font-medium ring-1 transition-colors ring-inset',
         'after:absolute after:inset-x-0 after:-inset-y-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
         active ? colors.solid : colors.tint,
       )}
@@ -183,12 +184,8 @@ export function SongList({ songs }) {
       </div>
 
       {tagCounts.length > 0 || favourites > 0 ? (
-        // One row that scrolls sideways on a phone, wrapping onto more rows where there is room.
-        <div
-          role="group"
-          aria-label="Show"
-          className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
-        >
+        // Every chip in view, wrapping onto as many rows as it takes, at every width.
+        <div role="group" aria-label="Show" className="flex flex-wrap gap-2 py-1">
           <Chip active={shelf === null} onClick={() => setShelf(null)} colors={NEUTRAL} count={songs.length}>
             All
           </Chip>
@@ -209,6 +206,9 @@ export function SongList({ songs }) {
               {name}
             </Chip>
           ))}
+          {/* Takes the last row's spare width, so a few chips left over keep their own size
+              instead of stretching across it. The margin cancels the gap before it. */}
+          <span aria-hidden className="-ml-2 h-0 basis-0 grow-[999]" />
         </div>
       ) : null}
 

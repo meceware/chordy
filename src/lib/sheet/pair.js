@@ -27,16 +27,23 @@ export function pairLine(chordLine, lyricLine) {
   return cells;
 }
 
-// A chord written over the space before a word belongs to that word, so each boundary
-// advances past whitespace. Boundaries stay non-decreasing so the fragments still
-// reassemble into the original line.
+// How far before a word a chord may be written and still belong to it: one column, the space
+// just before the word, where a chord written a little early lands.
+const SNAP = 1;
+
+// A chord written over the space just before a word belongs to that word. A chord over a wider
+// gap stays with the gap: the sheet left room there on purpose, for a chord played between words
+// or before the singing starts. Over trailing space, with no word after, it is past the end of the
+// line. Boundaries stay non-decreasing so the fragments still reassemble into the original line.
 function snapToWords(columns, text) {
   const bounds = [];
   let floor = 0;
 
   for (const column of columns) {
     let index = Math.min(column, text.length);
-    while (index < text.length && /\s/.test(text[index])) index += 1;
+    let next = index;
+    while (next < text.length && /\s/.test(text[next])) next += 1;
+    if (next === text.length || next - index <= SNAP) index = next;
     floor = Math.max(floor, index);
     bounds.push(floor);
   }
@@ -48,7 +55,9 @@ function snapToWords(columns, text) {
 const CHORD_ROOM = 2;
 
 // Words of lyric that chords played after the line ends take with them when they wrap. On their
-// own they would wrap as a row of chords over nothing, and read as a line of their own.
+// own they would wrap as a row of chords over nothing, and read as a line of their own. They take
+// the last word, and the one before only if it has no chord of its own: a word with its own
+// chord can wrap by itself, and taking it would leave a long run that cannot break.
 const TAIL_WORDS = 2;
 
 /**
@@ -65,8 +74,10 @@ export function wordsOf(cells) {
   const words = [];
   let open = false;
 
+  // A segment continues the open word unless it begins with space: a chord over a gap starts
+  // its own word, so a row may wrap at the gap.
   const place = (segment) => {
-    if (open && segment.text !== '') words[words.length - 1].push(segment);
+    if (open && segment.text !== '' && !/^\s/.test(segment.text)) words[words.length - 1].push(segment);
     else words.push([segment]);
     open = segment.text !== '' && !/\s$/.test(segment.text);
   };
@@ -87,6 +98,7 @@ export function wordsOf(cells) {
   while (tail > 0 && words[tail - 1].every((segment) => segment.text === '')) tail -= 1;
   if (tail === words.length || tail === 0) return words;
 
-  const from = Math.max(0, tail - TAIL_WORDS);
+  let from = tail - 1;
+  while (from > 0 && tail - from < TAIL_WORDS && !words[from - 1].some((segment) => segment.chord)) from -= 1;
   return [...words.slice(0, from), words.slice(from).flat()];
 }

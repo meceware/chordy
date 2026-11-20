@@ -10,6 +10,10 @@ import { SongRow, SongRows, songMeta } from '@/components/song-row';
 
 const FUSE_OPTIONS = { keys: ['title', 'artist'], threshold: 0.4, ignoreLocation: true };
 
+// Songs listed before anything is typed: the ones opened last. Search reaches every song.
+const LIMIT = 10;
+const byRecent = (a, b) => (b.viewedAt ?? 0) - (a.viewedAt ?? 0) || a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+
 /**
  * Picking the next song, as a list rather than a pair of arrows. The arrows went unused because
  * "the next one in title order" is rarely the song you want next; the one after this one is
@@ -17,17 +21,23 @@ const FUSE_OPTIONS = { keys: ['title', 'artist'], threshold: 0.4, ignoreLocation
  *
  * `songs` arrives in title order, and "up next" walks that order. Not recently-opened order:
  * opening a song records a view, which moves it to the front of the very sequence being walked,
- * so next and previous would swap on every step.
+ * so next and previous would swap on every step. The list below is the other way round: the ten
+ * opened last, since a long library listed in full is a scroll, not a choice.
  */
 export function SongsDrawer({ open, onOpenChange, songs, currentId }) {
   const [query, setQuery] = useState('');
 
   const index = songs.findIndex((song) => song.id === currentId);
-  const previous = index > 0 ? songs[index - 1] : null;
-  const next = index >= 0 ? (songs[index + 1] ?? null) : null;
+  // The order goes round: after the last song comes the first again, and before the first, the
+  // last. With a single song there is nowhere to step to.
+  const stepping = index >= 0 && songs.length > 1;
+  const previous = stepping ? songs[(index - 1 + songs.length) % songs.length] : null;
+  const next = stepping ? songs[(index + 1) % songs.length] : null;
 
   const fuse = useMemo(() => new Fuse(songs, FUSE_OPTIONS), [songs]);
-  const shown = query.trim() ? fuse.search(query).map((hit) => hit.item) : songs;
+  const recent = useMemo(() => [...songs].sort(byRecent).slice(0, LIMIT), [songs]);
+  const searching = query.trim() !== '';
+  const shown = searching ? fuse.search(query).map((hit) => hit.item) : recent;
 
   const close = (value) => {
     if (!value) setQuery('');
@@ -65,11 +75,7 @@ export function SongsDrawer({ open, onOpenChange, songs, currentId }) {
                 </span>
                 <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
               </Link>
-            ) : (
-              <p className="flex h-16 flex-1 items-center rounded-xl border border-dashed border-border px-4 text-sm text-muted-foreground">
-                This is the last song.
-              </p>
-            )}
+            ) : null}
           </div>
         ) : null}
 
@@ -103,6 +109,12 @@ export function SongsDrawer({ open, onOpenChange, songs, currentId }) {
             Nothing matches “{query}”.
           </p>
         )}
+
+        {!searching && songs.length > LIMIT ? (
+          <p className="text-center text-xs text-muted-foreground">
+            The {LIMIT} you opened last. Search to find any of your {songs.length} songs.
+          </p>
+        ) : null}
       </div>
     </ResponsiveDialog>
   );

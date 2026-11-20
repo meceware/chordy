@@ -114,3 +114,38 @@ test('chords past the end of the lyric take the last words with them', () => {
 test('a line whose chords all sit over its lyric keeps every word free to wrap', () => {
   assert.deepEqual(wordsOfPair('       Am         G', 'Let it be, let it be'), ['Let ', 'it ', 'be, ', 'let ', 'it ', 'be']);
 });
+
+test('a chord over a gap the sheet leaves stays with the gap, not the next word', () => {
+  // D/F# is played before the singing starts, over the five spaces before "Hepsi".
+  const cells = pairOf('D/F#       C     D', '     Hepsi bu');
+
+  assert.deepEqual(cells.map((c) => [c.chord?.text ?? null, c.text]), [
+    ['D/F#', '     Hepsi '],
+    ['C', 'bu'],
+    ['D', ''],
+  ]);
+});
+
+test('a chord over the space just before a word still belongs to that word', () => {
+  assert.deepEqual(pairOf('    G', 'Hey there').map((c) => [c.chord?.text ?? null, c.text]), [
+    [null, 'Hey '],
+    ['G', 'there'],
+  ]);
+});
+
+test('a gap with a chord over it is somewhere a row may wrap', () => {
+  // Cmaj7 sits over the gap after "gökyüzü"; G lands inside "sadece"; the last Cmaj7 is played
+  // after the line ends.
+  assert.deepEqual(wordsOfPair('       G      Cmaj7      G       Cmaj7', 'Sadece gökyüzü      sadece deniz'), [
+    'Sadece ',
+    'gökyüzü',
+    '      sadece deniz',
+  ]);
+});
+
+test('chords after the line end do not take a word that has a chord of its own', () => {
+  const words = wordsOf(pairOf('C      G      D', 'one two'));
+
+  assert.deepEqual(words.map((word) => word.map((segment) => segment.text).join('')), ['one ', 'two']);
+  assert.deepEqual(words.at(-1).filter((segment) => segment.chord).map((segment) => segment.chord.text), ['G', 'D']);
+});
