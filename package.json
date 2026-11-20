@@ -16,7 +16,7 @@
   "dependencies": {
     "@tombatossals/chords-db": "^0.5.1",
     "@tombatossals/react-chords": "github:tombatossals/react-chords#3788063",
-    "better-auth": "^1.7.26",
+    "better-auth": "^1.7.27",
     "better-sqlite3": "^13.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -25,7 +25,7 @@
     "lucide-react": "^1.77.0",
     "next": "16.4.6",
     "next-themes": "^0.4.6",
-    "nodemailer": "^10.6.0",
+    "nodemailer": "^10.6.1",
     "radix-ui": "^1.8.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",

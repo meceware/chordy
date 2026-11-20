@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Guitar } from 'lucide-react';
+import { ExternalLink, Guitar } from 'lucide-react';
 import { SheetView } from '@/components/sheet-view';
 import { ChordDialog } from '@/components/chord-dialog';
 import { SongsDrawer } from '@/components/songs-drawer';
@@ -12,6 +12,7 @@ import { SongCard } from '@/components/song-card';
 import { ChordGrid, ChordVisibility, MetronomeSettings, TextSize, Transpose } from '@/components/song-tools';
 import { VideoTutorial } from '@/components/video-tutorial';
 import { CollapsibleCard } from '@/components/collapsible-card';
+import { siteConfig } from '@/components/config';
 import { tokenizeSheet, sheetChords } from '@/lib/sheet/tokenize';
 import { transposeSheet } from '@/lib/sheet/transpose';
 import { saveBpm, saveMetronome, saveScrollSpeed, saveTranspose } from '@/app/songs/[id]/actions';
@@ -27,15 +28,26 @@ const TRANSPOSE_LIMIT = 6;
 
 /**
  * The song's chords as a card of their own, between the tutorial and the sheet, folded so the
- * sheet starts high. Folded, its title row still names every chord, in the order they come.
+ * sheet starts high. Folded, its title row still names every chord, in the order they come. Open,
+ * it ends with somewhere to look a fingering up before drawing it here. That link sits under the
+ * shapes rather than in the title row, which is all one button that folds the card.
  */
 function ChordsCard({ chords, shapes, prefs, onOpen }) {
   const names = chords.length > 0 ? <span className="font-mono font-semibold text-chord">{chords.join('  ')}</span> : null;
 
   return (
     <CollapsibleCard icon={Guitar} title="Chords" summary={names}>
-      <div className="p-4">
+      <div className="space-y-3 p-4">
         <ChordGrid chords={chords} shapes={shapes} prefs={prefs} onOpen={onOpen} />
+        <a
+          href={siteConfig.links.reactChords}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:underline"
+        >
+          Look up other fingerings on react-chords
+          <ExternalLink className="size-3.5" aria-hidden />
+        </a>
       </div>
     </CollapsibleCard>
   );
