@@ -5,14 +5,11 @@ import { AccountMenu } from '@/components/account-menu';
 import { GitHubMark } from '@/components/github-mark';
 import { Button } from '@/components/ui/button';
 import { siteConfig } from '@/components/config';
+import { HidingHeader } from '@/components/hiding-header';
 
-/**
- * The same header on every page, and it never moves: the page scrolls underneath it, between it
- * and whatever bar a page keeps at the bottom.
- */
 export function Header({ email = null }) {
   return (
-    <header className="no-print hide-in-stage shrink-0 border-b border-border bg-background">
+    <HidingHeader className="no-print hide-in-stage border-b border-border bg-background">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-1 px-3">
         <Link href="/" className="flex h-11 items-center gap-2 rounded-xl px-1 text-[17px] font-semibold tracking-tight">
           <Pick className="size-5 text-brand" />
@@ -28,6 +25,6 @@ export function Header({ email = null }) {
           <AccountMenu email={email} />
         </div>
       </div>
-    </header>
+    </HidingHeader>
   );
 }

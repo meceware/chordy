@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExternalLink, Guitar } from 'lucide-react';
 import { SheetView } from '@/components/sheet-view';
 import { ChordDialog } from '@/components/chord-dialog';
@@ -73,7 +73,6 @@ export function SongSheet({ song, shapes, prefs, songs }) {
   const [panel, setPanel] = useState(null);
   const [chord, setChord] = useState(null);
   const [stage, setStage] = useState(false);
-  const scrollRef = useRef(null);
 
   // The grid lives in a drawer and the transport in the play bar, so the engine belongs to
   // whatever contains both.
@@ -152,8 +151,8 @@ export function SongSheet({ song, shapes, prefs, songs }) {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div ref={scrollRef} data-scroll-root className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+    <div data-song-page className="flex flex-1 flex-col">
+      <div className="flex-1">
         <div className="mx-auto w-full max-w-3xl px-4 pt-4 pb-10 lg:pt-6">
           <article className="min-w-0 space-y-5">
             <div className="hide-in-stage">
@@ -184,7 +183,7 @@ export function SongSheet({ song, shapes, prefs, songs }) {
         </div>
       </div>
 
-      <div className="no-print relative shrink-0">
+      <div className="no-print sticky bottom-0 z-30">
         <SaveNotice failed={failed} onRetry={retry} className="absolute inset-x-0 bottom-full mb-2 px-4" />
 
         <PlayMode
@@ -192,7 +191,6 @@ export function SongSheet({ song, shapes, prefs, songs }) {
           onSpeed={setSpeed}
           onPanel={openPanel}
           onTransposeBy={shift}
-          scrollRef={scrollRef}
           stage={stage}
           onToggleStage={toggleStage}
           metronomeRunning={running}

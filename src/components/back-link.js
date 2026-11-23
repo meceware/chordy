@@ -24,7 +24,7 @@ export function BackLink({ href, label, onClick, className }) {
  */
 export function PageBar({ children }) {
   return (
-    <div className="sticky top-0 z-30 -mx-4 mb-4 flex min-h-14 items-center gap-2 border-b border-border bg-background/95 px-4 backdrop-blur">
+    <div className="sticky top-(--header-offset) z-30 -mx-4 mb-4 flex min-h-14 items-center gap-2 border-b border-border bg-background/95 px-4 backdrop-blur transition-[top] duration-200 motion-reduce:transition-none">
       {children}
     </div>
   );

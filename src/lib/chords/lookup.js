@@ -40,12 +40,6 @@ export function lookupChord(name, shapes = {}) {
   return { name, positions: [], custom: [], match: 'missing' };
 }
 
-export function lookupMessage(result) {
-  if (result.match === 'unparsed') return `${result.name} — not recognised as a chord.`;
-  if (result.match === 'missing') return `No shape stored for ${result.name}.`;
-  return null;
-}
-
 /**
  * Flattens the result into one addressable list. Your own shapes come first, then the
  * database's. The `db:` index is positional within the chords-db group, which is stable

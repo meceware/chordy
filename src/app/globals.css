@@ -4,6 +4,8 @@
 
 :root {
   --radius: 0.75rem;
+  /* How much of the window the header covers; hiding-header.js keeps it current. */
+  --header-offset: 3.5625rem;
 
   /* Light is the second theme: the same structure as the dark stage, on warm white, with the
      chords in orange, since amber text dark enough to read on white turns brown. */
@@ -119,6 +121,11 @@
     @apply border-border outline-ring/50;
   }
 
+  /* No pull-to-refresh on a song: pulling down while playing near the top must not reload it. */
+  html:has([data-song-page]) {
+    overscroll-behavior-y: none;
+  }
+
   body {
     @apply bg-background text-foreground;
     -webkit-tap-highlight-color: transparent;
@@ -174,15 +181,6 @@ body[data-stage='true'] .hide-in-stage {
 @media print {
   .no-print {
     display: none !important;
-  }
-
-  /* The app shell scrolls inside <main>; paper needs the whole document laid out instead. */
-  html,
-  body,
-  main,
-  [data-scroll-root] {
-    height: auto !important;
-    overflow: visible !important;
   }
 
   .chord-sheet {

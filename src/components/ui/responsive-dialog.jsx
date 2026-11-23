@@ -17,7 +17,6 @@ import { cn } from '@/lib/utils';
  * `persistent` only matters on wider screens, where a centred dialog has no swipe: a click
  * outside it is ignored and it closes from its X.
  *
- * `actions` sits at the start of the header row, for a back button inside a multi-step panel;
  * `footer` stays pinned below the scrolling body.
  */
 export function ResponsiveDialog({
@@ -28,7 +27,6 @@ export function ResponsiveDialog({
   children,
   className,
   persistent = false,
-  actions = null,
   footer = null,
 }) {
   const isMobile = useMediaQuery('(max-width: 639px)');
@@ -48,7 +46,6 @@ export function ResponsiveDialog({
 
   const heading = (Title, Description, withClose) => (
     <div className="flex items-center gap-2">
-      {actions}
       <div className="flex min-h-10 min-w-0 flex-1 flex-col justify-center">
         <Title className="truncate text-lg font-semibold">{title}</Title>
         {description ? <Description className="mt-0.5">{description}</Description> : null}

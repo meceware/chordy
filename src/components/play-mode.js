@@ -10,14 +10,12 @@ import { cn } from '@/lib/utils';
 
 // Reaching the bottom does not end play mode: the song is still being played from the last
 // screen, so the screen has to stay awake. The loop idles there instead, and picks up again if
-// you drag back up to repeat a section. It moves the page's own scroll area, not the window: the
-// app shell keeps the window still so the header and the bars never move.
+// you drag back up to repeat a section. It scrolls the window, the page's one scroller.
 // `hold` pauses the loop without stopping play, while the glide back to the top is moving the
-// same scroll area; scrolling picks up again from wherever the glide leaves off.
-function useAutoScroll(playing, speed, scrollRef, hold) {
+// page; scrolling picks up again from wherever the glide leaves off.
+function useAutoScroll(playing, speed, hold) {
   useEffect(() => {
-    const target = scrollRef.current;
-    if (!playing || !target) return undefined;
+    if (!playing) return undefined;
 
     let frame = 0;
     let previous = 0;
@@ -33,7 +31,7 @@ function useAutoScroll(playing, speed, scrollRef, hold) {
         const whole = Math.trunc(travel);
         carried = travel - whole;
 
-        if (whole !== 0) target.scrollBy(0, whole);
+        if (whole !== 0) window.scrollBy(0, whole);
       }
 
       previous = now;
@@ -42,35 +40,35 @@ function useAutoScroll(playing, speed, scrollRef, hold) {
 
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
-  }, [playing, speed, scrollRef, hold]);
+  }, [playing, speed, hold]);
 }
 
 /**
- * Eases a scroll area back to the top: quick to start, gentle to land, longer for a longer way but
+ * Eases the page back to the top: quick to start, gentle to land, longer for a longer way but
  * never past ~0.9s. Animated here rather than with the browser's smooth scrolling, which some
  * browsers skip outright and which a scroll from the play loop would cut short. A touch, a wheel
  * or a key from the reader stops it where it is. Returns a function that stops it too.
  */
-function glideToTop(target, onEnd) {
-  const from = target.scrollTop;
+function glideToTop(onEnd) {
+  const from = window.scrollY;
   const duration = Math.min(900, 250 + from / 6);
   const start = performance.now();
   let frame = 0;
 
   const stop = () => {
     cancelAnimationFrame(frame);
-    for (const type of ['wheel', 'touchstart', 'keydown']) target.removeEventListener(type, stop);
+    for (const type of ['wheel', 'touchstart', 'keydown']) window.removeEventListener(type, stop);
     onEnd();
   };
 
   const step = (now) => {
     const progress = Math.min(1, (now - start) / duration);
-    target.scrollTop = from * (1 - progress) ** 3;
+    window.scrollTo(0, from * (1 - progress) ** 3);
     if (progress < 1) frame = requestAnimationFrame(step);
     else stop();
   };
 
-  for (const type of ['wheel', 'touchstart', 'keydown']) target.addEventListener(type, stop, { passive: true });
+  for (const type of ['wheel', 'touchstart', 'keydown']) window.addEventListener(type, stop, { passive: true });
   frame = requestAnimationFrame(step);
   return stop;
 }
@@ -154,7 +152,6 @@ export function PlayMode({
   onSpeed,
   onPanel,
   onTransposeBy,
-  scrollRef,
   stage = false,
   onToggleStage,
   metronomeRunning = false,
@@ -171,23 +168,21 @@ export function PlayMode({
 
   const hold = useRef(false);
   const stopGlide = useRef(null);
-  useAutoScroll(playing, speed, scrollRef, hold);
+  useAutoScroll(playing, speed, hold);
   useEffect(() => () => stopGlide.current?.(), []);
 
   // Back to the top as a glide, so you see where you are going; a jump for anyone who has asked
   // their system for less motion. Scrolling, if it is on, carries on from the top.
   const toTop = () => {
-    const target = scrollRef.current;
-    if (!target) return;
     stopGlide.current?.();
 
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      target.scrollTop = 0;
+      window.scrollTo(0, 0);
       return;
     }
 
     hold.current = true;
-    stopGlide.current = glideToTop(target, () => {
+    stopGlide.current = glideToTop(() => {
       hold.current = false;
       stopGlide.current = null;
     });

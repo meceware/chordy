@@ -2,6 +2,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import { Header } from '@/components/header';
 import { ServiceWorker } from '@/components/service-worker';
+import { RefreshOnReturn } from '@/components/refresh-on-return';
 import { siteConfig } from '@/components/config';
 import { currentSession } from '@/lib/session';
 import './globals.css';
@@ -64,14 +65,15 @@ export default async function RootLayout({ children }) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full w-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} w-full antialiased`}
     >
-      {/* An app shell: the body never scrolls, so the header stays put and the one scrollbar
-          runs only between the header and a page's bottom bar, never past it. */}
-      <body className="flex h-dvh w-full flex-col overflow-hidden">
+      {/* A normal page: the window scrolls. At least the window's height, so a short page still
+          puts its footer (or the song's play bar) at the bottom. */}
+      <body className="flex min-h-dvh flex-col">
         <Providers>
+          <RefreshOnReturn />
           <Header email={session?.user?.email ?? null} />
-          <main data-scroll-root className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain">
+          <main className="flex w-full flex-1 flex-col">
             {children}
           </main>
           <ServiceWorker />

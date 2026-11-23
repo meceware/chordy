@@ -42,6 +42,10 @@ const SORT_KEYS = Object.keys(SORTS);
 
 const FAVOURITES = Symbol('favourites');
 
+// The chip that was on, kept in memory rather than stored: back from a song, or the Songs link,
+// returns to the same tag, while a reload or a new visit starts from All.
+let remembered = null;
+
 const NEUTRAL = {
   tint: 'bg-secondary text-secondary-foreground ring-border hover:bg-accent',
   solid: 'bg-foreground text-background ring-foreground',
@@ -94,7 +98,6 @@ function Continue({ song }) {
 
 export function SongList({ songs }) {
   const [query, setQuery] = useState('');
-  const [shelf, setShelf] = useState(null);
   const [sort, setSort] = useStoredChoice('chordy.sort', 'recent', SORT_KEYS);
   // Relative dates depend on the viewer's clock and timezone, which the server render cannot know.
   const hydrated = useHydrated();
@@ -106,6 +109,15 @@ export function SongList({ songs }) {
     return [...counts].sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   }, [songs]);
   const favourites = songs.filter((song) => song.favourite).length;
+  // The chip that is on outlives the page while the app is open (see `remembered`); one that no
+  // longer applies, such as a tag since removed, reads as All.
+  const [chosen, choose] = useState(() => remembered);
+  const shelf = chosen === FAVOURITES ? (favourites > 0 ? FAVOURITES : null) : tagCounts.some(([name]) => name === chosen) ? chosen : null;
+  const setShelf = (next) => {
+    remembered = next;
+    choose(next);
+  };
+  const toggle = (next) => setShelf(shelf === next ? null : next);
   const recent = useMemo(
     () => songs.filter((song) => song.viewedAt).sort((a, b) => b.viewedAt - a.viewedAt)[0] ?? null,
     [songs],
@@ -121,7 +133,6 @@ export function SongList({ songs }) {
     return shelf ? base.filter((song) => song.tags.includes(shelf)) : base;
   }, [fuse, query, searching, songs, sort, shelf]);
 
-  const toggle = (next) => setShelf((current) => (current === next ? null : next));
 
   if (songs.length === 0) {
     return (
